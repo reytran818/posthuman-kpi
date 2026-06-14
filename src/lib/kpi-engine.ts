@@ -27,14 +27,46 @@ export const KPISchema = z.object({
 
 export type KPI = z.infer<typeof KPISchema>;
 
+export const ContributionTypeSchema = z.enum([
+  "execution",
+  "domain_expertise",
+  "technical_build",
+  "revenue_generated",
+  "capital_invested",
+  "ip_created",
+  "network_connections",
+  "idea_vision",
+  "market_research",
+  "team_recruited",
+]);
+
+export type ContributionType = z.infer<typeof ContributionTypeSchema>;
+
+export const ContributionSchema = z.object({
+  id: z.string(),
+  description: z.string(),
+  type: ContributionTypeSchema,
+  evidenceUrl: z.string().optional(),
+  estimatedValue: z.number().min(0),
+  hoursInvested: z.number().min(0),
+});
+
+export type Contribution = z.infer<typeof ContributionSchema>;
+
 export const FounderSchema = z.object({
   id: z.string(),
   name: z.string(),
   role: z.string(),
+  resume: z.string().optional(),
+  yearsExperience: z.number().optional(),
+  relevantSkills: z.array(z.string()).optional(),
+  contributions: z.array(ContributionSchema).optional(),
   kpis: z.array(KPISchema),
 });
 
 export type Founder = z.infer<typeof FounderSchema>;
+
+// --- Value multipliers ---
 
 const CATEGORY_VALUE_MULTIPLIERS: Record<KPICategory, number> = {
   revenue: 1.5,
@@ -54,20 +86,28 @@ const DIFFICULTY_MULTIPLIERS: Record<string, number> = {
   extreme: 2.2,
 };
 
+/**
+ * Contribution type weights.
+ * Execution-oriented contributions are weighted significantly higher than ideas.
+ * This reflects the principle that execution creates enterprise value.
+ */
+const CONTRIBUTION_TYPE_WEIGHTS: Record<ContributionType, number> = {
+  execution: 1.0,
+  technical_build: 0.95,
+  revenue_generated: 0.9,
+  capital_invested: 0.85,
+  ip_created: 0.8,
+  domain_expertise: 0.7,
+  team_recruited: 0.65,
+  network_connections: 0.5,
+  market_research: 0.4,
+  idea_vision: 0.15,
+};
+
 const TIMEFRAME_DECAY = 0.85;
 
 /**
  * Converts a single KPI into an enterprise value score.
- *
- * Formula:
- *   score = weight × categoryMultiplier × difficultyMultiplier × timeDecay × scaleNorm
- *
- * - weight: founder-defined importance (0–100)
- * - categoryMultiplier: value amplifier based on category's typical contribution to enterprise value
- * - difficultyMultiplier: harder KPIs are worth more
- * - timeDecay: longer timeframes reduce the annualized score via exponential decay
- * - scaleNorm: log-scaled normalization of the target value to prevent astronomical numbers
- *   from dominating (e.g., $10M revenue target vs "hire 5 engineers")
  */
 export function kpiToEnterpriseValue(kpi: KPI): number {
   const categoryMult = CATEGORY_VALUE_MULTIPLIERS[kpi.category];
@@ -79,26 +119,78 @@ export function kpiToEnterpriseValue(kpi: KPI): number {
 }
 
 /**
- * Calculates the total enterprise value contribution for a founder
- * based on all their KPIs.
+ * Calculates the value of a single prior contribution.
+ * Factors: type weight × (hours invested as effort signal) × log-scaled value.
  */
+export function contributionToValue(contribution: Contribution): number {
+  const typeWeight = CONTRIBUTION_TYPE_WEIGHTS[contribution.type];
+  const effortFactor = Math.log2(Math.max(contribution.hoursInvested, 1) + 1);
+  const valueFactor = Math.log10(Math.max(contribution.estimatedValue, 1) + 1);
+  return typeWeight * effortFactor * valueFactor * 10;
+}
+
+/**
+ * Calculates the total prior contribution value for a founder.
+ */
+export function founderContributionValue(founder: Founder): number {
+  const contributions = founder.contributions || [];
+  const baseContributions = contributions.reduce(
+    (total, c) => total + contributionToValue(c),
+    0
+  );
+
+  // Experience bonus: diminishing returns, caps around 20 years
+  const years = founder.yearsExperience || 0;
+  const experienceBonus = Math.log2(Math.max(years, 1) + 1) * 5;
+
+  return baseContributions + experienceBonus;
+}
+
+/**
+ * Calculates the total enterprise value contribution for a founder
+ * including both future KPIs and prior contributions.
+ *
+ * Split: 70% future execution (KPIs) + 30% prior contributions
+ * This ensures execution commitment outweighs past work.
+ */
+const FUTURE_WEIGHT = 0.7;
+const PRIOR_WEIGHT = 0.3;
+
 export function founderEnterpriseValue(founder: Founder): number {
+  const kpiScore = founder.kpis.reduce(
+    (total, kpi) => total + kpiToEnterpriseValue(kpi),
+    0
+  );
+  const contributionScore = founderContributionValue(founder);
+  return kpiScore * FUTURE_WEIGHT + contributionScore * PRIOR_WEIGHT;
+}
+
+/**
+ * Returns only the KPI-based score (for display breakdown).
+ */
+export function founderKPIScore(founder: Founder): number {
   return founder.kpis.reduce((total, kpi) => total + kpiToEnterpriseValue(kpi), 0);
 }
 
 /**
- * Given multiple founders, calculates equitable equity split
- * based on their relative enterprise value contributions.
- *
- * Returns a map of founder ID to equity percentage (0–100).
+ * Given multiple founders, calculates equitable equity split.
  */
 export function calculateEquitySplit(
   founders: Founder[]
-): { founderId: string; founderName: string; equityPercent: number; rawScore: number }[] {
+): {
+  founderId: string;
+  founderName: string;
+  equityPercent: number;
+  rawScore: number;
+  kpiScore: number;
+  contributionScore: number;
+}[] {
   const scores = founders.map((f) => ({
     founderId: f.id,
     founderName: f.name,
     rawScore: founderEnterpriseValue(f),
+    kpiScore: founderKPIScore(f) * FUTURE_WEIGHT,
+    contributionScore: founderContributionValue(f) * PRIOR_WEIGHT,
   }));
 
   const totalScore = scores.reduce((sum, s) => sum + s.rawScore, 0);
@@ -114,15 +206,6 @@ export function calculateEquitySplit(
   }));
 }
 
-/**
- * Projects the implied enterprise value of the company
- * based on founders' KPIs aggregate — a rough indicator
- * of expected 12-month value trajectory.
- *
- * Benchmark: A "typical" seed-stage startup with 2 founders and
- * standard KPIs might score ~500 raw points ≈ $2M enterprise value.
- * This scaling factor converts raw scores to dollar estimates.
- */
 const VALUE_SCALING_FACTOR = 4000;
 
 export function projectedEnterpriseValue(founders: Founder[]): number {
@@ -134,12 +217,135 @@ export function projectedEnterpriseValue(founders: Founder[]): number {
 }
 
 /**
+ * Detects overlapping contributions and responsibilities between founders.
+ */
+export interface OverlapFlag {
+  founderNames: string[];
+  area: string;
+  severity: "info" | "warning" | "conflict";
+  description: string;
+}
+
+export function detectOverlaps(founders: Founder[]): OverlapFlag[] {
+  const overlaps: OverlapFlag[] = [];
+
+  // Check KPI category overlaps
+  const foundersByCategory: Record<string, string[]> = {};
+  for (const f of founders) {
+    for (const kpi of f.kpis) {
+      if (!foundersByCategory[kpi.category]) {
+        foundersByCategory[kpi.category] = [];
+      }
+      if (!foundersByCategory[kpi.category].includes(f.name)) {
+        foundersByCategory[kpi.category].push(f.name);
+      }
+    }
+  }
+
+  for (const [category, names] of Object.entries(foundersByCategory)) {
+    if (names.length > 1) {
+      overlaps.push({
+        founderNames: names,
+        area: category,
+        severity: names.length > 2 ? "conflict" : "warning",
+        description: `Multiple founders (${names.join(", ")}) have KPIs in "${category}". Clarify ownership or split responsibilities.`,
+      });
+    }
+  }
+
+  // Check contribution type overlaps
+  const foundersByContribType: Record<string, string[]> = {};
+  for (const f of founders) {
+    for (const c of f.contributions || []) {
+      if (!foundersByContribType[c.type]) {
+        foundersByContribType[c.type] = [];
+      }
+      if (!foundersByContribType[c.type].includes(f.name)) {
+        foundersByContribType[c.type].push(f.name);
+      }
+    }
+  }
+
+  for (const [type, names] of Object.entries(foundersByContribType)) {
+    if (names.length > 1) {
+      const label = type.replace(/_/g, " ");
+      overlaps.push({
+        founderNames: names,
+        area: label,
+        severity: "warning",
+        description: `Multiple founders claim prior "${label}" contributions. Review for double-counting.`,
+      });
+    }
+  }
+
+  // Check skill overlaps
+  const skillOwners: Record<string, string[]> = {};
+  for (const f of founders) {
+    for (const skill of f.relevantSkills || []) {
+      const normalized = skill.toLowerCase().trim();
+      if (!skillOwners[normalized]) skillOwners[normalized] = [];
+      if (!skillOwners[normalized].includes(f.name)) {
+        skillOwners[normalized].push(f.name);
+      }
+    }
+  }
+
+  const overlappingSkills = Object.entries(skillOwners).filter(
+    ([, names]) => names.length > 1
+  );
+  if (overlappingSkills.length > 0) {
+    const topOverlaps = overlappingSkills.slice(0, 3);
+    for (const [skill, names] of topOverlaps) {
+      overlaps.push({
+        founderNames: names,
+        area: skill,
+        severity: "info",
+        description: `Shared skill "${skill}" between ${names.join(" & ")}. Consider who owns execution in this area.`,
+      });
+    }
+  }
+
+  // Check if someone only has idea/vision contributions and no execution
+  for (const f of founders) {
+    const contribs = f.contributions || [];
+    if (contribs.length > 0) {
+      const executionTypes: ContributionType[] = [
+        "execution",
+        "technical_build",
+        "revenue_generated",
+        "capital_invested",
+        "ip_created",
+        "team_recruited",
+      ];
+      const hasExecution = contribs.some((c) =>
+        executionTypes.includes(c.type)
+      );
+      const hasIdeaOnly = contribs.every(
+        (c) => c.type === "idea_vision" || c.type === "market_research"
+      );
+
+      if (hasIdeaOnly && !hasExecution) {
+        overlaps.push({
+          founderNames: [f.name],
+          area: "execution gap",
+          severity: "warning",
+          description: `${f.name} only has idea/research contributions. Ideas are weighted at 15% of execution value. Add concrete execution commitments via KPIs.`,
+        });
+      }
+    }
+  }
+
+  return overlaps;
+}
+
+/**
  * Analyzes fairness of the KPI distribution and flags potential imbalances.
  */
 export function fairnessAnalysis(founders: Founder[]): {
   isBalanced: boolean;
   warnings: string[];
   recommendations: string[];
+  overlaps: OverlapFlag[];
 } {
   const equitySplit = calculateEquitySplit(founders);
   const warnings: string[] = [];
@@ -181,7 +387,7 @@ export function fairnessAnalysis(founders: Founder[]): {
 
   for (const f of founders) {
     if (f.kpis.length === 0) {
-      warnings.push(`${f.name} has no KPIs assigned.`);
+      warnings.push(`${f.name} has no KPIs assigned — only prior contributions count.`);
     } else if (f.kpis.length < 2) {
       recommendations.push(
         `${f.name} has only ${f.kpis.length} KPI. Consider adding more dimensions.`
@@ -189,9 +395,19 @@ export function fairnessAnalysis(founders: Founder[]): {
     }
   }
 
+  // Check for founders with no execution commitment
+  for (const f of founders) {
+    if (f.kpis.length === 0 && (!f.contributions || f.contributions.length === 0)) {
+      warnings.push(`${f.name} has neither KPIs nor prior contributions recorded.`);
+    }
+  }
+
+  const overlaps = detectOverlaps(founders);
+
   return {
-    isBalanced: warnings.length === 0,
+    isBalanced: warnings.length === 0 && overlaps.filter((o) => o.severity === "conflict").length === 0,
     warnings,
     recommendations,
+    overlaps,
   };
 }
