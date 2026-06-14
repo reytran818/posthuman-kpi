@@ -9,14 +9,16 @@ const SAVE_DEBOUNCE = 1000;
 export function useSharedFounders() {
   const [founders, setFoundersLocal] = useState<Founder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSavingState] = useState(false);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasLoaded = useRef(false);
-  const isSaving = useRef(false);
+  const savingLock = useRef(false);
   const lastFetchHash = useRef("");
+  const currentFounders = useRef<Founder[]>([]);
 
   async function fetchFounders() {
-    if (isSaving.current) return;
+    if (savingLock.current) return;
     try {
       const res = await fetch("/api/founders", { cache: "no-store" });
       if (res.ok) {
@@ -25,6 +27,7 @@ export function useSharedFounders() {
         if (hash !== lastFetchHash.current) {
           lastFetchHash.current = hash;
           setFoundersLocal(data);
+          currentFounders.current = data;
         }
         if (!hasLoaded.current) {
           hasLoaded.current = true;
@@ -43,44 +46,61 @@ export function useSharedFounders() {
     return () => clearInterval(interval);
   }, []);
 
+  const persistToServer = useCallback(async (data: Founder[]) => {
+    savingLock.current = true;
+    setIsSavingState(true);
+    try {
+      const res = await fetch("/api/founders", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (res.ok) {
+        const result = await res.json();
+        setLastSaved(result.updatedAt);
+        lastFetchHash.current = JSON.stringify(data);
+      }
+    } catch {
+      // will retry
+    } finally {
+      savingLock.current = false;
+      setIsSavingState(false);
+    }
+  }, []);
+
   const setFounders = useCallback((newFounders: Founder[] | ((prev: Founder[]) => Founder[])) => {
     setFoundersLocal((prev) => {
       const resolved = typeof newFounders === "function" ? newFounders(prev) : newFounders;
 
-      // Don't save empty arrays unless explicitly resetting
       if (resolved.length === 0 && !hasLoaded.current) {
         return prev;
       }
 
+      currentFounders.current = resolved;
+
       if (saveTimeout.current) clearTimeout(saveTimeout.current);
-      saveTimeout.current = setTimeout(async () => {
-        isSaving.current = true;
-        try {
-          const res = await fetch("/api/founders", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(resolved),
-          });
-          if (res.ok) {
-            const data = await res.json();
-            setLastSaved(data.updatedAt);
-            lastFetchHash.current = JSON.stringify(resolved);
-          }
-        } catch {
-          // will retry on next save
-        } finally {
-          isSaving.current = false;
-        }
+      saveTimeout.current = setTimeout(() => {
+        persistToServer(resolved);
       }, SAVE_DEBOUNCE);
 
       return resolved;
     });
-  }, []);
+  }, [persistToServer]);
+
+  const saveNow = useCallback(async () => {
+    if (saveTimeout.current) {
+      clearTimeout(saveTimeout.current);
+      saveTimeout.current = null;
+    }
+    await persistToServer(currentFounders.current);
+  }, [persistToServer]);
 
   const resetAll = useCallback(async () => {
     setFoundersLocal([]);
+    currentFounders.current = [];
     lastFetchHash.current = JSON.stringify([]);
-    isSaving.current = true;
+    savingLock.current = true;
+    setIsSavingState(true);
     try {
       await fetch("/api/founders", {
         method: "PUT",
@@ -94,9 +114,10 @@ export function useSharedFounders() {
     } catch {
       // ignore
     } finally {
-      isSaving.current = false;
+      savingLock.current = false;
+      setIsSavingState(false);
     }
   }, []);
 
-  return { founders, setFounders, isLoading, lastSaved, resetAll };
+  return { founders, setFounders, isLoading, isSaving, lastSaved, saveNow, resetAll };
 }

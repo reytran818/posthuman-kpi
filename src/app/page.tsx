@@ -8,11 +8,11 @@ import { ResultsDashboard } from "@/components/results-dashboard";
 import { LegalFramework } from "@/components/legal-framework";
 import { TransparencyDisclosure } from "@/components/transparency-disclosure";
 import { useSharedFounders } from "@/hooks/use-shared-founders";
-import { Users, Target, BarChart3, RotateCcw, Cloud, Shield, Eye } from "lucide-react";
+import { Users, Target, BarChart3, RotateCcw, Cloud, Shield, Eye, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function Home() {
-  const { founders, setFounders, isLoading, lastSaved, resetAll } =
+  const { founders, setFounders, isLoading, isSaving, lastSaved, saveNow, resetAll } =
     useSharedFounders();
   const [activeTab, setActiveTab] = useState("founders");
 
@@ -42,12 +42,21 @@ export default function Home() {
             <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
               <Cloud className="h-3.5 w-3.5 text-green-500" />
               <span>
-                Synced
-                {lastSaved && (
+                {isSaving ? "Saving..." : "Synced"}
+                {lastSaved && !isSaving && (
                   <> • {new Date(lastSaved).toLocaleTimeString()}</>
                 )}
               </span>
             </div>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={saveNow}
+              disabled={isSaving}
+            >
+              <Save className="h-3.5 w-3.5 mr-1" />
+              {isSaving ? "Saving..." : "Save"}
+            </Button>
             <Button
               variant="ghost"
               size="sm"
