@@ -6,8 +6,9 @@ import { FounderSetup } from "@/components/founder-setup";
 import { KPIInput } from "@/components/kpi-input";
 import { ResultsDashboard } from "@/components/results-dashboard";
 import { LegalFramework } from "@/components/legal-framework";
+import { TransparencyDisclosure } from "@/components/transparency-disclosure";
 import { useSharedFounders } from "@/hooks/use-shared-founders";
-import { Users, Target, BarChart3, RotateCcw, Cloud, Shield } from "lucide-react";
+import { Users, Target, BarChart3, RotateCcw, Cloud, Shield, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function Home() {
@@ -65,7 +66,7 @@ export default function Home() {
 
       <div className="mx-auto max-w-6xl px-6 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="founders" className="gap-2">
               <Users className="h-4 w-4" />
               Founders
@@ -94,6 +95,10 @@ export default function Home() {
               <Shield className="h-4 w-4" />
               Legal
             </TabsTrigger>
+            <TabsTrigger value="transparency" className="gap-2">
+              <Eye className="h-4 w-4" />
+              Disclosure
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="founders" className="mt-6">
@@ -118,6 +123,10 @@ export default function Home() {
 
           <TabsContent value="legal" className="mt-6">
             <LegalFramework founders={founders} />
+          </TabsContent>
+
+          <TabsContent value="transparency" className="mt-6">
+            <TransparencyDisclosure />
           </TabsContent>
         </Tabs>
       </div>

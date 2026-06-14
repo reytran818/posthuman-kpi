@@ -104,7 +104,7 @@ export function ResultsDashboard({ founders }: ResultsDashboardProps) {
         </h2>
         <p className="text-muted-foreground mt-1">
           Calculated from KPI commitments (70%) and prior contributions (30%).
-          Execution is weighted 6.7× higher than ideas.
+          Execution is weighted 3.3× higher than ideas.
         </p>
       </div>
 
@@ -845,7 +845,7 @@ export function ResultsDashboard({ founders }: ResultsDashboardProps) {
                 <li>Network: 0.5×</li>
                 <li>Market Research: 0.4×</li>
                 <li>
-                  <strong>Idea / Vision: 0.15× (15%)</strong>
+                  <strong>Idea / Vision: 0.30× (30%)</strong>
                 </li>
               </ul>
             </div>

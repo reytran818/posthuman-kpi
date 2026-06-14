@@ -126,7 +126,7 @@ const CONTRIBUTION_TYPE_WEIGHTS: Record<ContributionType, number> = {
   team_recruited: 0.65,
   network_connections: 0.5,
   market_research: 0.4,
-  idea_vision: 0.15,
+  idea_vision: 0.3,
 };
 
 const TIMEFRAME_DECAY = 0.85;
@@ -644,17 +644,17 @@ export function investorReadinessCheck(founders: Founder[]): InvestorReadiness {
   const redFlags: InvestorRedFlag[] = [];
   const equitySplit = calculateEquitySplit(founders);
 
-  // 1. Equal splits with no rationale
+  // 1. Equal splits with no differentiation
   const equities = equitySplit.map((s) => s.equityPercent);
   const maxDiff = Math.max(...equities) - Math.min(...equities);
   if (maxDiff < 3 && founders.length > 1) {
     redFlags.push({
       id: "equal_split",
-      category: "critical",
-      title: "Equal equity split detected",
+      category: "warning",
+      title: "Near-equal equity split",
       description:
-        "YC and top investors view equal splits as a sign that founders haven't had hard conversations about value. It suggests avoidance, not fairness.",
-      fix: "Differentiate equity based on role criticality, time commitment, capital invested, and opportunity cost. Even a 55/45 split shows intentionality.",
+        "Equal splits can be intentional and fair if founders truly contribute equally. However, investors may ask whether this reflects careful analysis or conflict avoidance. Be prepared to explain why equal is the right answer.",
+      fix: "If intentional: document why each founder's value is equivalent. If not: use the algorithm output to differentiate based on actual contributions and commitments.",
     });
   }
 

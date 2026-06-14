@@ -168,9 +168,10 @@ export function FounderSetup({
           <div className="text-sm text-muted-foreground space-y-1">
             <p className="font-medium text-foreground">Ideas vs Execution</p>
             <p>
-              This algorithm weights execution at <strong>6.7×</strong> the value
-              of ideas alone. An idea without execution scores 15% of base value,
-              while actual building/shipping scores 100%. Prior contributions
+              This algorithm weights execution at <strong>3.3×</strong> the value
+              of ideas/vision. Ideas and vision score at 30% of base value,
+              while actual building/shipping scores 100%. Both matter — ideas
+              are the seed, execution grows the tree. Prior contributions
               account for 30% of equity; future KPI commitments account for 70%.
             </p>
           </div>
