@@ -994,3 +994,337 @@ export function assignRoles(founders: Founder[]): RoleAssignment[] {
     };
   });
 }
+
+// =====================================================
+// PROTECTIVE CLAUSES & MODELING
+// =====================================================
+
+/**
+ * Good Leaver / Bad Leaver framework.
+ * Determines what happens to a founder's equity when they depart.
+ */
+export interface DepartureScenario {
+  type: "good_leaver" | "bad_leaver" | "voluntary_early" | "death_disability";
+  label: string;
+  description: string;
+  vestedEquityKept: number; // percentage of vested shares kept (0-100)
+  unvestedEquityKept: number; // percentage of unvested shares kept (0-100)
+  repurchasePrice: string;
+  nonCompeteApplies: boolean;
+}
+
+export const DEPARTURE_SCENARIOS: DepartureScenario[] = [
+  {
+    type: "good_leaver",
+    label: "Good Leaver",
+    description: "Founder leaves voluntarily after cliff (2+ years) with board approval, or is terminated without cause",
+    vestedEquityKept: 100,
+    unvestedEquityKept: 0,
+    repurchasePrice: "Fair Market Value (FMV) at time of departure",
+    nonCompeteApplies: true,
+  },
+  {
+    type: "bad_leaver",
+    label: "Bad Leaver",
+    description: "Founder is terminated for cause (fraud, gross negligence, breach of fiduciary duty, violation of non-compete)",
+    vestedEquityKept: 0,
+    unvestedEquityKept: 0,
+    repurchasePrice: "Original purchase price (nominal value) — effectively forfeiture",
+    nonCompeteApplies: true,
+  },
+  {
+    type: "voluntary_early",
+    label: "Early Voluntary Departure",
+    description: "Founder leaves voluntarily before cliff (within first 12 months)",
+    vestedEquityKept: 0,
+    unvestedEquityKept: 0,
+    repurchasePrice: "Original purchase price — full equity returns to pool",
+    nonCompeteApplies: true,
+  },
+  {
+    type: "death_disability",
+    label: "Death or Permanent Disability",
+    description: "Founder is unable to continue due to death or permanent disability",
+    vestedEquityKept: 100,
+    unvestedEquityKept: 50,
+    repurchasePrice: "Fair Market Value — estate/founder retains significant equity",
+    nonCompeteApplies: false,
+  },
+];
+
+/**
+ * Dilution modeling — shows how founder equity changes through funding rounds.
+ */
+export interface DilutionRound {
+  roundName: string;
+  preMoneyValuation: number;
+  amountRaised: number;
+  postMoneyValuation: number;
+  dilutionPercent: number;
+  optionPoolIncrease: number;
+}
+
+export interface FounderDilutionPath {
+  founderName: string;
+  initialEquity: number;
+  afterSeed: number;
+  afterSeriesA: number;
+  afterSeriesB: number;
+}
+
+export function modelDilution(founders: Founder[]): {
+  rounds: DilutionRound[];
+  founderPaths: FounderDilutionPath[];
+} {
+  const equitySplit = calculateEquitySplit(founders);
+
+  const rounds: DilutionRound[] = [
+    {
+      roundName: "Seed",
+      preMoneyValuation: 5_000_000,
+      amountRaised: 1_500_000,
+      postMoneyValuation: 6_500_000,
+      dilutionPercent: 23.1,
+      optionPoolIncrease: 5,
+    },
+    {
+      roundName: "Series A",
+      preMoneyValuation: 25_000_000,
+      amountRaised: 8_000_000,
+      postMoneyValuation: 33_000_000,
+      dilutionPercent: 24.2,
+      optionPoolIncrease: 5,
+    },
+    {
+      roundName: "Series B",
+      preMoneyValuation: 100_000_000,
+      amountRaised: 30_000_000,
+      postMoneyValuation: 130_000_000,
+      dilutionPercent: 23.1,
+      optionPoolIncrease: 3,
+    },
+  ];
+
+  const founderPaths: FounderDilutionPath[] = equitySplit.map((s) => {
+    const initial = s.equityPercent * 0.85; // after ESOP
+    const afterSeed = initial * (1 - rounds[0].dilutionPercent / 100) * (1 - rounds[0].optionPoolIncrease / 100);
+    const afterSeriesA = afterSeed * (1 - rounds[1].dilutionPercent / 100) * (1 - rounds[1].optionPoolIncrease / 100);
+    const afterSeriesB = afterSeriesA * (1 - rounds[2].dilutionPercent / 100) * (1 - rounds[2].optionPoolIncrease / 100);
+
+    return {
+      founderName: s.founderName,
+      initialEquity: Number(initial.toFixed(2)),
+      afterSeed: Number(afterSeed.toFixed(2)),
+      afterSeriesA: Number(afterSeriesA.toFixed(2)),
+      afterSeriesB: Number(afterSeriesB.toFixed(2)),
+    };
+  });
+
+  return { rounds, founderPaths };
+}
+
+/**
+ * Decision rights framework — who can make what decisions
+ */
+export interface DecisionRight {
+  category: string;
+  description: string;
+  approvalRequired: string;
+  threshold: string;
+}
+
+export const DECISION_RIGHTS: DecisionRight[] = [
+  { category: "Day-to-Day Operations", description: "Hiring <$100k salary, expenses <$10k, product decisions within roadmap", approvalRequired: "CEO alone", threshold: "No vote needed" },
+  { category: "Major Hiring", description: "VP+ hires, salaries >$100k, firing co-founders", approvalRequired: "Board majority", threshold: "Simple majority" },
+  { category: "Financial Commitments", description: "Expenses >$25k, debt, leases, contracts >12 months", approvalRequired: "Board majority", threshold: "Simple majority" },
+  { category: "Equity Issuance", description: "New shares, option grants, SAFE/convertible notes", approvalRequired: "Board + founder majority", threshold: "Supermajority (66%)" },
+  { category: "Fundraising", description: "Any external capital raise", approvalRequired: "Board + all founders", threshold: "Unanimous founder consent" },
+  { category: "Pivots / Strategy", description: "Major product direction changes, market shifts", approvalRequired: "Board majority + CEO", threshold: "Simple majority + CEO veto" },
+  { category: "Sale / Acquisition", description: "Selling the company, merging, significant asset sales", approvalRequired: "Board + supermajority founders", threshold: "75% of shares" },
+  { category: "IP Licensing", description: "Licensing core IP to third parties", approvalRequired: "Board unanimous", threshold: "Unanimous" },
+  { category: "Founder Removal", description: "Removing a co-founder from the company", approvalRequired: "Board + remaining founders", threshold: "All non-affected founders + board majority" },
+  { category: "Dissolution", description: "Winding down the company", approvalRequired: "All shareholders", threshold: "75% of all shares" },
+];
+
+/**
+ * Conflict resolution escalation path
+ */
+export interface ConflictStep {
+  step: number;
+  method: string;
+  timeframe: string;
+  description: string;
+  binding: boolean;
+}
+
+export const CONFLICT_RESOLUTION: ConflictStep[] = [
+  { step: 1, method: "Direct Discussion", timeframe: "7 days", description: "Founders attempt to resolve the dispute directly between themselves in good faith", binding: false },
+  { step: 2, method: "Board Mediation", timeframe: "14 days", description: "If unresolved, the dispute is brought before the full board (or an independent advisor) for facilitated discussion", binding: false },
+  { step: 3, method: "Professional Mediation", timeframe: "30 days", description: "An independent third-party mediator (e.g., JAMS) is engaged. Both parties must participate in good faith", binding: false },
+  { step: 4, method: "Binding Arbitration", timeframe: "60 days", description: "If mediation fails, the dispute goes to binding arbitration (AAA rules). The arbitrator's decision is final and enforceable", binding: true },
+  { step: 5, method: "Shotgun Clause (Deadlock)", timeframe: "90 days", description: "For irreconcilable deadlocks between equal partners: one founder makes a buy/sell offer at a price. The other must either accept or buy out the offering founder at that same price", binding: true },
+];
+
+/**
+ * Protective clauses and legal terms
+ */
+export interface ProtectiveClause {
+  id: string;
+  category: "non_compete" | "non_solicit" | "confidentiality" | "ip" | "rofr" | "drag_along" | "tag_along" | "anti_dilution";
+  title: string;
+  description: string;
+  duration: string;
+  standard: string;
+  importance: "critical" | "important" | "recommended";
+}
+
+export const PROTECTIVE_CLAUSES: ProtectiveClause[] = [
+  {
+    id: "non_compete",
+    category: "non_compete",
+    title: "Non-Compete Agreement",
+    description: "Founders cannot start, join, or invest in a competing business during their time at the company and for a period after departure.",
+    duration: "During employment + 24 months post-departure",
+    standard: "Geographic scope: industry-wide. Enforceable in most US states (except CA where narrowed to trade secret protection).",
+    importance: "critical",
+  },
+  {
+    id: "non_solicit_employees",
+    category: "non_solicit",
+    title: "Non-Solicitation (Employees)",
+    description: "Departing founders cannot recruit or hire any employees or contractors from the company.",
+    duration: "24 months post-departure",
+    standard: "Universally enforceable. Prevents poaching of key team members.",
+    importance: "critical",
+  },
+  {
+    id: "non_solicit_clients",
+    category: "non_solicit",
+    title: "Non-Solicitation (Clients/Partners)",
+    description: "Departing founders cannot solicit or divert business from the company's clients, customers, or partners.",
+    duration: "24 months post-departure",
+    standard: "Standard in all startup agreements. Protects revenue relationships.",
+    importance: "critical",
+  },
+  {
+    id: "confidentiality",
+    category: "confidentiality",
+    title: "Confidentiality & NDA",
+    description: "All proprietary information, trade secrets, business plans, financial data, and customer information remains confidential indefinitely.",
+    duration: "Indefinite (survives departure and company dissolution)",
+    standard: "Unlimited duration for trade secrets. 5-year sunset for general business info.",
+    importance: "critical",
+  },
+  {
+    id: "ip_assignment",
+    category: "ip",
+    title: "IP Assignment (PIIA)",
+    description: "All work product, inventions, code, designs, and intellectual property created during the founder's tenure is owned exclusively by the company.",
+    duration: "Perpetual — work product belongs to company forever",
+    standard: "Must be signed BEFORE any work begins. Includes prior IP contributed to the company.",
+    importance: "critical",
+  },
+  {
+    id: "rofr",
+    category: "rofr",
+    title: "Right of First Refusal (ROFR)",
+    description: "Before any founder can sell/transfer shares to a third party, the company and other founders have the right to purchase those shares at the same price and terms.",
+    duration: "Until IPO or dissolution",
+    standard: "Prevents unwanted third parties from appearing on the cap table. Standard in all startup stock purchase agreements.",
+    importance: "important",
+  },
+  {
+    id: "drag_along",
+    category: "drag_along",
+    title: "Drag-Along Rights",
+    description: "If holders of a supermajority (75%+) of shares approve a sale/acquisition, all other shareholders must participate on the same terms.",
+    duration: "Until IPO",
+    standard: "Prevents a minority founder from blocking a beneficial exit. Threshold typically 66-75%.",
+    importance: "important",
+  },
+  {
+    id: "tag_along",
+    category: "tag_along",
+    title: "Tag-Along Rights (Co-Sale)",
+    description: "If a majority founder sells shares, minority founders have the right to sell their proportional share in the same transaction at the same price.",
+    duration: "Until IPO",
+    standard: "Protects minority founders from being left behind in partial sales. Ensures equal treatment.",
+    importance: "important",
+  },
+  {
+    id: "anti_dilution",
+    category: "anti_dilution",
+    title: "Anti-Dilution Protection",
+    description: "If the company raises a down round (lower valuation), founder shares are protected from excessive dilution through weighted-average adjustment.",
+    duration: "Until IPO",
+    standard: "Broad-based weighted average is most common and founder-friendly. Full ratchet is aggressive (usually only for investors).",
+    importance: "recommended",
+  },
+];
+
+/**
+ * Founder compensation framework
+ */
+export interface CompensationTier {
+  stage: string;
+  ceoSalary: string;
+  otherFounderSalary: string;
+  notes: string;
+}
+
+export const COMPENSATION_FRAMEWORK: CompensationTier[] = [
+  { stage: "Pre-Seed / Bootstrapping", ceoSalary: "$0 – $50k", otherFounderSalary: "$0 – $50k", notes: "Founders typically take no salary or minimal living expenses. Equity is the primary compensation." },
+  { stage: "Post-Seed ($1-3M raised)", ceoSalary: "$75k – $120k", otherFounderSalary: "$70k – $110k", notes: "Below-market salaries. YC recommends founders pay themselves enough to not be stressed about rent." },
+  { stage: "Post-Series A ($5-15M raised)", ceoSalary: "$120k – $175k", otherFounderSalary: "$110k – $160k", notes: "Approaching market rate but still below. Board typically sets compensation." },
+  { stage: "Post-Series B ($20M+ raised)", ceoSalary: "$175k – $250k", otherFounderSalary: "$150k – $225k", notes: "Near market rate. Any increase above this requires board approval." },
+];
+
+/**
+ * Milestone-based vesting gates
+ */
+export interface VestingMilestone {
+  quarter: number;
+  percentUnlocked: number;
+  requiredAchievements: string;
+}
+
+export function generateVestingMilestones(founder: Founder): VestingMilestone[] {
+  const milestones: VestingMilestone[] = [];
+  const kpiCount = founder.kpis.length;
+
+  if (kpiCount === 0) {
+    return [
+      { quarter: 4, percentUnlocked: 25, requiredAchievements: "Complete 1-year cliff (time-based only — no KPIs defined)" },
+      { quarter: 8, percentUnlocked: 50, requiredAchievements: "2-year mark (time-based)" },
+      { quarter: 12, percentUnlocked: 75, requiredAchievements: "3-year mark (time-based)" },
+      { quarter: 16, percentUnlocked: 100, requiredAchievements: "4-year full vest (time-based)" },
+    ];
+  }
+
+  // Performance-gated vesting
+  const kpisPerGate = Math.max(1, Math.ceil(kpiCount / 4));
+  const kpiNames = founder.kpis.map((k) => k.name);
+
+  milestones.push({
+    quarter: 4,
+    percentUnlocked: 25,
+    requiredAchievements: `1-year cliff + achieve: ${kpiNames.slice(0, kpisPerGate).join(", ")}`,
+  });
+  milestones.push({
+    quarter: 8,
+    percentUnlocked: 50,
+    requiredAchievements: `Achieve: ${kpiNames.slice(kpisPerGate, kpisPerGate * 2).join(", ") || "maintain Year 1 KPIs + growth targets"}`,
+  });
+  milestones.push({
+    quarter: 12,
+    percentUnlocked: 75,
+    requiredAchievements: `Achieve: ${kpiNames.slice(kpisPerGate * 2, kpisPerGate * 3).join(", ") || "exceed prior KPIs by 50%+"}`,
+  });
+  milestones.push({
+    quarter: 16,
+    percentUnlocked: 100,
+    requiredAchievements: `Full vest: all KPIs achieved or exceeded. ${kpiNames.slice(kpisPerGate * 3).join(", ") || "Company-wide targets met."}`,
+  });
+
+  return milestones;
+}

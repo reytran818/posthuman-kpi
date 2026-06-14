@@ -5,8 +5,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FounderSetup } from "@/components/founder-setup";
 import { KPIInput } from "@/components/kpi-input";
 import { ResultsDashboard } from "@/components/results-dashboard";
+import { LegalFramework } from "@/components/legal-framework";
 import { useSharedFounders } from "@/hooks/use-shared-founders";
-import { Users, Target, BarChart3, RotateCcw, Cloud } from "lucide-react";
+import { Users, Target, BarChart3, RotateCcw, Cloud, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function Home() {
@@ -64,7 +65,7 @@ export default function Home() {
 
       <div className="mx-auto max-w-6xl px-6 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="founders" className="gap-2">
               <Users className="h-4 w-4" />
               Founders
@@ -84,6 +85,14 @@ export default function Home() {
             >
               <BarChart3 className="h-4 w-4" />
               Results
+            </TabsTrigger>
+            <TabsTrigger
+              value="legal"
+              className="gap-2"
+              disabled={founders.length === 0}
+            >
+              <Shield className="h-4 w-4" />
+              Legal
             </TabsTrigger>
           </TabsList>
 
@@ -105,6 +114,10 @@ export default function Home() {
 
           <TabsContent value="results" className="mt-6">
             <ResultsDashboard founders={founders} />
+          </TabsContent>
+
+          <TabsContent value="legal" className="mt-6">
+            <LegalFramework founders={founders} />
           </TabsContent>
         </Tabs>
       </div>
