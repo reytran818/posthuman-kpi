@@ -23,6 +23,7 @@ export async function saveFounders(founders: unknown[]) {
   await put(BLOB_FILENAME, JSON.stringify(founders), {
     access: "public",
     addRandomSuffix: false,
+    allowOverwrite: true,
     token: process.env.BLOB_READ_WRITE_TOKEN,
   });
 }
