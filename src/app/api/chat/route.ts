@@ -7,6 +7,8 @@ export async function POST(req: Request) {
   const { messages, founderRole, foundersContext } = await req.json();
 
   let currentState = "";
+  const imageUrls: string[] = [];
+
   try {
     const founders = JSON.parse(foundersContext || "[]");
     if (founders.length > 0) {
@@ -27,6 +29,19 @@ export async function POST(req: Request) {
           currentState += `  Prior Contributions:\n`;
           for (const c of f.contributions) {
             currentState += `    - [${c.type}] ${c.description} (${c.hoursInvested}h, $${c.estimatedValue} value)\n`;
+          }
+        }
+
+        if (f.attachments?.length > 0) {
+          currentState += `  Uploaded Documents:\n`;
+          for (const att of f.attachments) {
+            currentState += `    - ${att.filename} (${att.type})\n`;
+            if (att.type.startsWith("image/")) {
+              imageUrls.push(att.url);
+            }
+            if (att.type === "application/pdf") {
+              currentState += `      [PDF uploaded — ask the user about its contents or reference it in discussion]\n`;
+            }
           }
         }
 
@@ -70,12 +85,14 @@ Ideas without execution are weighted appropriately low. Be diplomatic but firm a
 
 You have full awareness of all founders, their resumes, prior contributions, skills, and KPIs. You can:
 - Evaluate whether prior contributions are fairly valued
+- ANALYZE UPLOADED DOCUMENTS (images of resumes, contracts, screenshots) that founders provide as evidence
 - Suggest new KPIs that complement existing ones
 - FLAG OVERLAPS between founders (duplicate skills, competing responsibilities)
 - Recommend adjustments to weights, targets, or difficulty levels
 - Analyze whether someone is over/under-claiming contributions
 - Explain how changes would affect the equity split
 - Challenge founders who only contribute ideas to commit to execution KPIs
+- Reference specific details from uploaded images/documents when making recommendations
 
 ## OVERLAP DETECTION
 
@@ -120,10 +137,38 @@ When suggesting a KPI:
 
 Be encouraging but honest. If someone is over-claiming or under-contributing, say so diplomatically. Always consider the full team dynamics.`;
 
+  // Inject uploaded images into context so Claude can analyze them
+  let processedMessages = messages;
+  if (imageUrls.length > 0 && messages.length > 0) {
+    const imageContent = imageUrls.slice(0, 5).map((url: string) => ({
+      type: "image" as const,
+      image: new URL(url),
+    }));
+
+    // Add images as context in a system-like injection at the start
+    processedMessages = [
+      {
+        role: "user" as const,
+        content: [
+          {
+            type: "text" as const,
+            text: "[System: The following images were uploaded by founders as evidence of their contributions. Analyze them when relevant to the conversation.]",
+          },
+          ...imageContent,
+        ],
+      },
+      {
+        role: "assistant" as const,
+        content: "I can see the uploaded documents and images. I'll reference them when evaluating contributions and suggesting KPIs. How can I help?",
+      },
+      ...messages,
+    ];
+  }
+
   const result = streamText({
     model: bedrock("anthropic.claude-opus-4-20250514-v1:0"),
     system: systemPrompt,
-    messages,
+    messages: processedMessages,
   });
 
   return result.toUIMessageStreamResponse();

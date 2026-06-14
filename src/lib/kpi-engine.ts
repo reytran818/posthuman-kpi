@@ -53,6 +53,17 @@ export const ContributionSchema = z.object({
 
 export type Contribution = z.infer<typeof ContributionSchema>;
 
+export const AttachmentSchema = z.object({
+  id: z.string(),
+  url: z.string(),
+  filename: z.string(),
+  type: z.string(),
+  size: z.number(),
+  uploadedAt: z.string(),
+});
+
+export type Attachment = z.infer<typeof AttachmentSchema>;
+
 export const FounderSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -61,6 +72,7 @@ export const FounderSchema = z.object({
   yearsExperience: z.number().optional(),
   relevantSkills: z.array(z.string()).optional(),
   contributions: z.array(ContributionSchema).optional(),
+  attachments: z.array(AttachmentSchema).optional(),
   kpis: z.array(KPISchema),
 });
 

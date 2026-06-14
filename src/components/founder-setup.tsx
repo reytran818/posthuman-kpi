@@ -21,8 +21,9 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import type { Founder, Contribution, ContributionType } from "@/lib/kpi-engine";
+import type { Founder, Contribution, ContributionType, Attachment } from "@/lib/kpi-engine";
 import { contributionToValue } from "@/lib/kpi-engine";
+import { FileUpload } from "@/components/file-upload";
 import {
   Plus,
   Trash2,
@@ -79,6 +80,7 @@ export function FounderSetup({
       yearsExperience: 0,
       relevantSkills: [],
       contributions: [],
+      attachments: [],
       kpis: [],
     };
     setFounders([...founders, founder]);
@@ -269,6 +271,34 @@ export function FounderSetup({
                           updateFounder(founder.id, { resume: e.target.value })
                         }
                         className="min-h-[100px]"
+                      />
+                    </div>
+
+                    {/* File Uploads */}
+                    <div className="space-y-2">
+                      <Label>Documents & Evidence</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Upload resumes, contracts, screenshots, or any evidence
+                        of contributions. The AI will analyze these files.
+                      </p>
+                      <FileUpload
+                        founderId={founder.id}
+                        attachments={founder.attachments || []}
+                        onUpload={(attachment: Attachment) =>
+                          updateFounder(founder.id, {
+                            attachments: [
+                              ...(founder.attachments || []),
+                              attachment,
+                            ],
+                          })
+                        }
+                        onRemove={(attachmentId: string) =>
+                          updateFounder(founder.id, {
+                            attachments: (founder.attachments || []).filter(
+                              (a) => a.id !== attachmentId
+                            ),
+                          })
+                        }
                       />
                     </div>
 
