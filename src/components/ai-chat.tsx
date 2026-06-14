@@ -12,21 +12,25 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Sparkles, Send } from "lucide-react";
+import type { Founder } from "@/lib/kpi-engine";
 
 interface AIChatProps {
   founderRole: string;
+  founders: Founder[];
 }
 
-export function AIChat({ founderRole }: AIChatProps) {
+export function AIChat({ founderRole, founders }: AIChatProps) {
   const [input, setInput] = useState("");
+
+  const foundersContext = useMemo(() => JSON.stringify(founders), [founders]);
 
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
         api: "/api/chat",
-        body: { founderRole },
+        body: { founderRole, foundersContext },
       }),
-    [founderRole]
+    [founderRole, foundersContext]
   );
 
   const { messages, sendMessage, status } = useChat({ transport });
@@ -71,7 +75,8 @@ export function AIChat({ founderRole }: AIChatProps) {
               <ul className="space-y-1 text-xs">
                 <li>&quot;What KPIs should a CTO track?&quot;</li>
                 <li>&quot;How do I measure product-market fit?&quot;</li>
-                <li>&quot;Suggest revenue targets for a seed startup&quot;</li>
+                <li>&quot;Is the current equity split fair?&quot;</li>
+                <li>&quot;What KPIs am I missing?&quot;</li>
               </ul>
             </div>
           )}
@@ -104,7 +109,7 @@ export function AIChat({ founderRole }: AIChatProps) {
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask about KPIs..."
+            placeholder="Ask about KPIs, fairness, equity..."
             disabled={isLoading}
           />
           <Button type="submit" size="sm" disabled={isLoading || !input}>

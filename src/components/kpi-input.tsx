@@ -344,7 +344,7 @@ export function KPIInput({ founders, setFounders, onComplete }: KPIInputProps) {
 
         {showChat && (
           <div className="space-y-4">
-            <AIChat founderRole={activeFounder?.role || ""} />
+            <AIChat founderRole={activeFounder?.role || ""} founders={founders} />
           </div>
         )}
       </div>

@@ -5,12 +5,45 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FounderSetup } from "@/components/founder-setup";
 import { KPIInput } from "@/components/kpi-input";
 import { ResultsDashboard } from "@/components/results-dashboard";
+import { useLocalStorage } from "@/hooks/use-local-storage";
 import type { Founder } from "@/lib/kpi-engine";
-import { Users, Target, BarChart3 } from "lucide-react";
+import { Users, Target, BarChart3, RotateCcw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function Home() {
-  const [founders, setFounders] = useState<Founder[]>([]);
-  const [activeTab, setActiveTab] = useState("founders");
+  const [founders, setFounders, isHydrated] = useLocalStorage<Founder[]>(
+    "posthuman-founders",
+    []
+  );
+  const [activeTab, setActiveTab] = useLocalStorage<string>(
+    "posthuman-active-tab",
+    "founders"
+  );
+  const [, setLastUpdated] = useLocalStorage<string>(
+    "posthuman-last-updated",
+    ""
+  );
+
+  function updateFounders(newFounders: Founder[]) {
+    setFounders(newFounders);
+    setLastUpdated(new Date().toISOString());
+  }
+
+  function resetAll() {
+    if (confirm("Reset all data? This cannot be undone.")) {
+      setFounders([]);
+      setActiveTab("founders");
+      setLastUpdated("");
+    }
+  }
+
+  if (!isHydrated) {
+    return (
+      <main className="min-h-screen flex items-center justify-center">
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen">
@@ -24,9 +57,14 @@ export default function Home() {
               Founders Agreement — KPI & Equity Allocation
             </p>
           </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
-            <span className="inline-block h-2 w-2 rounded-full bg-green-500" />
-            AI-Assisted
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
+              <span className="inline-block h-2 w-2 rounded-full bg-green-500" />
+              AI-Assisted • Auto-saved
+            </div>
+            <Button variant="ghost" size="sm" onClick={resetAll}>
+              <RotateCcw className="h-3.5 w-3.5" />
+            </Button>
           </div>
         </div>
       </header>
@@ -59,7 +97,7 @@ export default function Home() {
           <TabsContent value="founders" className="mt-6">
             <FounderSetup
               founders={founders}
-              setFounders={setFounders}
+              setFounders={updateFounders}
               onComplete={() => setActiveTab("kpis")}
             />
           </TabsContent>
@@ -67,7 +105,7 @@ export default function Home() {
           <TabsContent value="kpis" className="mt-6">
             <KPIInput
               founders={founders}
-              setFounders={setFounders}
+              setFounders={updateFounders}
               onComplete={() => setActiveTab("results")}
             />
           </TabsContent>
