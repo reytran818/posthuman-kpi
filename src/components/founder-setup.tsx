@@ -76,6 +76,7 @@ export function FounderSetup({
       id: crypto.randomUUID(),
       name: newName.trim(),
       role: newRole.trim(),
+      requestedEquity: 0,
       resume: "",
       yearsExperience: 0,
       relevantSkills: [],
@@ -233,7 +234,27 @@ export function FounderSetup({
                       </Badge>
                     )}
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor={`equity-${founder.id}`} className="text-xs text-muted-foreground whitespace-nowrap">
+                        Requesting:
+                      </Label>
+                      <Input
+                        id={`equity-${founder.id}`}
+                        type="number"
+                        min={0}
+                        max={100}
+                        className="w-20 h-8 text-sm"
+                        value={founder.requestedEquity || ""}
+                        placeholder="%"
+                        onChange={(e) =>
+                          updateFounder(founder.id, {
+                            requestedEquity: Number(e.target.value),
+                          })
+                        }
+                      />
+                      <span className="text-xs text-muted-foreground">%</span>
+                    </div>
                     <Button
                       variant="outline"
                       size="sm"

@@ -20,6 +20,8 @@ import {
   founderKPIScore,
   founderContributionValue,
   kpiToEnterpriseValue,
+  validateKPIs,
+  failureScenarios,
 } from "@/lib/kpi-engine";
 import {
   PieChart,
@@ -41,6 +43,8 @@ import {
   Scale,
   AlertCircle,
   GitMerge,
+  XCircle,
+  ShieldAlert,
 } from "lucide-react";
 
 interface ResultsDashboardProps {
@@ -59,6 +63,8 @@ export function ResultsDashboard({ founders }: ResultsDashboardProps) {
   const equitySplit = calculateEquitySplit(founders);
   const enterpriseValue = projectedEnterpriseValue(founders);
   const analysis = fairnessAnalysis(founders);
+  const kpiIssues = validateKPIs(founders);
+  const scenarios = failureScenarios(founders);
 
   const pieData = equitySplit.map((s, i) => ({
     name: s.founderName,
@@ -299,6 +305,188 @@ export function ResultsDashboard({ founders }: ResultsDashboardProps) {
               <Progress value={split.equityPercent} />
             </div>
           ))}
+        </CardContent>
+      </Card>
+
+      {/* Requested vs Calculated Equity */}
+      {founders.some((f) => f.requestedEquity && f.requestedEquity > 0) && (
+        <Card className="border-primary/30">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Scale className="h-5 w-5" />
+              Requested vs Calculated Equity
+            </CardTitle>
+            <CardDescription>
+              Comparing what each founder asks for vs what the algorithm says
+              they deserve
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="grid grid-cols-5 text-xs font-medium text-muted-foreground uppercase tracking-wider pb-2">
+                <span>Founder</span>
+                <span className="text-center">Requested</span>
+                <span className="text-center">Calculated</span>
+                <span className="text-center">Difference</span>
+                <span className="text-center">Verdict</span>
+              </div>
+              <Separator />
+              {founders.map((f) => {
+                const calc = equitySplit.find((s) => s.founderId === f.id);
+                const requested = f.requestedEquity || 0;
+                const calculated = calc?.equityPercent || 0;
+                const diff = requested - calculated;
+                return (
+                  <div
+                    key={f.id}
+                    className="grid grid-cols-5 items-center text-sm py-2 border-b border-border/50"
+                  >
+                    <span className="font-medium">{f.name}</span>
+                    <span className="text-center font-mono">
+                      {requested > 0 ? `${requested}%` : "—"}
+                    </span>
+                    <span className="text-center font-mono">
+                      {calculated.toFixed(1)}%
+                    </span>
+                    <span
+                      className={`text-center font-mono ${
+                        diff > 5
+                          ? "text-destructive"
+                          : diff < -5
+                          ? "text-blue-500"
+                          : "text-green-500"
+                      }`}
+                    >
+                      {requested > 0
+                        ? `${diff > 0 ? "+" : ""}${diff.toFixed(1)}pp`
+                        : "—"}
+                    </span>
+                    <span className="text-center">
+                      {requested === 0 ? (
+                        <Badge variant="outline">No request</Badge>
+                      ) : Math.abs(diff) <= 5 ? (
+                        <Badge className="bg-green-500/20 text-green-500 border-green-500/30">
+                          Fair
+                        </Badge>
+                      ) : diff > 5 ? (
+                        <Badge variant="destructive">Over-asking</Badge>
+                      ) : (
+                        <Badge className="bg-blue-500/20 text-blue-500 border-blue-500/30">
+                          Under-asking
+                        </Badge>
+                      )}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* KPI Validation Issues */}
+      {kpiIssues.length > 0 && (
+        <Card className="border-destructive/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <XCircle className="h-5 w-5 text-destructive" />
+              KPI Validation Issues
+            </CardTitle>
+            <CardDescription>
+              KPIs must be hard numbers and results-driven — not vague
+              percentages or conditional promises
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {kpiIssues.map((issue, i) => (
+              <div
+                key={i}
+                className={`flex items-start gap-3 p-3 rounded-lg ${
+                  issue.severity === "error"
+                    ? "bg-destructive/10 border border-destructive/30"
+                    : "bg-yellow-500/10 border border-yellow-500/30"
+                }`}
+              >
+                <AlertCircle
+                  className={`h-4 w-4 mt-0.5 shrink-0 ${
+                    issue.severity === "error"
+                      ? "text-destructive"
+                      : "text-yellow-500"
+                  }`}
+                />
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="text-xs">
+                      {issue.founderName}
+                    </Badge>
+                    <span className="text-sm font-medium">{issue.kpiName}</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{issue.issue}</p>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Failure Scenarios */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ShieldAlert className="h-5 w-5" />
+            What If a Founder Fails to Deliver?
+          </CardTitle>
+          <CardDescription>
+            How equity should adjust if a founder delivers 0% or 50% of their
+            KPI commitments
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            <div className="grid grid-cols-4 text-xs font-medium text-muted-foreground uppercase tracking-wider pb-2">
+              <span>Founder</span>
+              <span>Scenario</span>
+              <span className="text-center">Adjusted Equity</span>
+              <span className="text-center">Change</span>
+            </div>
+            <Separator />
+            {scenarios.map((s, i) => (
+              <div
+                key={i}
+                className="grid grid-cols-4 items-center text-sm py-2 border-b border-border/50"
+              >
+                <span className="font-medium">{s.founderName}</span>
+                <span className="text-muted-foreground">
+                  {s.scenarioLabel}
+                </span>
+                <span className="text-center font-mono">
+                  {s.adjustedEquity.toFixed(1)}%
+                </span>
+                <span
+                  className={`text-center font-mono ${
+                    s.equityChange < -5
+                      ? "text-destructive"
+                      : s.equityChange < 0
+                      ? "text-yellow-500"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  {s.equityChange.toFixed(1)}pp
+                </span>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 p-3 bg-muted rounded-lg text-xs text-muted-foreground">
+            <p className="font-medium text-foreground mb-1">
+              Recommended: Include a vesting/clawback clause
+            </p>
+            <p>
+              If a founder fails to deliver on KPIs, their equity should vest
+              over time tied to performance milestones. Consider a 4-year vest
+              with 1-year cliff, where KPI achievement unlocks each tranche.
+              Total failure = equity returns to the company pool.
+            </p>
+          </div>
         </CardContent>
       </Card>
 

@@ -68,6 +68,7 @@ export const FounderSchema = z.object({
   id: z.string(),
   name: z.string(),
   role: z.string(),
+  requestedEquity: z.number().min(0).max(100).optional(),
   resume: z.string().optional(),
   yearsExperience: z.number().optional(),
   relevantSkills: z.array(z.string()).optional(),
@@ -414,6 +415,46 @@ export function fairnessAnalysis(founders: Founder[]): {
     }
   }
 
+  // Compare requested equity vs calculated equity
+  for (const f of founders) {
+    if (f.requestedEquity != null && f.requestedEquity > 0) {
+      const calculated = equitySplit.find((s) => s.founderId === f.id);
+      if (calculated) {
+        const diff = f.requestedEquity - calculated.equityPercent;
+        if (diff > 10) {
+          warnings.push(
+            `${f.name} requests ${f.requestedEquity}% but algorithm calculates ${calculated.equityPercent.toFixed(1)}%. They are over-asking by ${diff.toFixed(1)} percentage points.`
+          );
+        } else if (diff > 5) {
+          recommendations.push(
+            `${f.name} requests ${f.requestedEquity}% — algorithm suggests ${calculated.equityPercent.toFixed(1)}%. Gap of ${diff.toFixed(1)}pp may need justification.`
+          );
+        } else if (diff < -10) {
+          recommendations.push(
+            `${f.name} requests ${f.requestedEquity}% but algorithm values them at ${calculated.equityPercent.toFixed(1)}%. They may be undervaluing themselves.`
+          );
+        }
+      }
+    }
+  }
+
+  // Check total requested equity
+  const totalRequested = founders.reduce(
+    (sum, f) => sum + (f.requestedEquity || 0),
+    0
+  );
+  if (totalRequested > 0 && totalRequested !== 100) {
+    if (totalRequested > 100) {
+      warnings.push(
+        `Total requested equity is ${totalRequested}% — exceeds 100%. Founders need to reconcile.`
+      );
+    } else if (totalRequested < 90) {
+      recommendations.push(
+        `Total requested equity is only ${totalRequested}%. Remaining ${(100 - totalRequested).toFixed(0)}% is unallocated (option pool?).`
+      );
+    }
+  }
+
   const overlaps = detectOverlaps(founders);
 
   return {
@@ -422,4 +463,132 @@ export function fairnessAnalysis(founders: Founder[]): {
     recommendations,
     overlaps,
   };
+}
+
+/**
+ * Validates KPIs for vagueness. Flags targets that are:
+ * - Percentages of unknown quantities
+ * - Relative to external factors outside the founder's control
+ * - Non-specific or unmeasurable
+ */
+export interface KPIValidationIssue {
+  founderId: string;
+  founderName: string;
+  kpiId: string;
+  kpiName: string;
+  issue: string;
+  severity: "error" | "warning";
+}
+
+const VAGUE_PATTERNS = [
+  { pattern: /% of (his|her|their|my) (income|salary|pay|earnings)/i, message: "Percentage of unknown income is not a hard number. Commit to a specific dollar amount." },
+  { pattern: /% of (another|other|external|outside)/i, message: "Dependent on external factors outside this company. Use an absolute target." },
+  { pattern: /\b(try|attempt|aim|hope|maybe|possibly|approximately|around|about|roughly)\b/i, message: "Vague language detected. KPIs must be specific and binary — achieved or not." },
+  { pattern: /\b(contribute|give|provide) .*(time|effort|energy)\b/i, message: "Time/effort is not a result. Specify a measurable deliverable outcome." },
+  { pattern: /\b(help|assist|support|participate)\b/i, message: "Helping is not measurable. Define what the output/result is." },
+  { pattern: /\b(when|if) (I|we|they|he|she) (get|receive|have|know)\b/i, message: "Conditional on future unknowns. Commit to a number now." },
+  { pattern: /\btbd\b|to be determined|not sure|don't know/i, message: "TBD is not acceptable in a binding agreement. Set a number." },
+];
+
+export function validateKPIs(founders: Founder[]): KPIValidationIssue[] {
+  const issues: KPIValidationIssue[] = [];
+
+  for (const f of founders) {
+    for (const kpi of f.kpis) {
+      const textToCheck = `${kpi.name} ${kpi.description} ${kpi.targetValue} ${kpi.unit}`;
+
+      for (const { pattern, message } of VAGUE_PATTERNS) {
+        if (pattern.test(textToCheck)) {
+          issues.push({
+            founderId: f.id,
+            founderName: f.name,
+            kpiId: kpi.id,
+            kpiName: kpi.name,
+            issue: message,
+            severity: "error",
+          });
+          break;
+        }
+      }
+
+      // Flag percentage-based units without absolute baseline
+      if (kpi.unit === "%" && kpi.targetValue < 100 && kpi.description.length < 20) {
+        issues.push({
+          founderId: f.id,
+          founderName: f.name,
+          kpiId: kpi.id,
+          kpiName: kpi.name,
+          issue: "Percentage target without clear baseline. What is 100%? Specify absolute numbers where possible.",
+          severity: "warning",
+        });
+      }
+
+      // Flag very low target values that seem like placeholders
+      if (kpi.targetValue === 0) {
+        issues.push({
+          founderId: f.id,
+          founderName: f.name,
+          kpiId: kpi.id,
+          kpiName: kpi.name,
+          issue: "Target value is 0. This KPI has no measurable goal.",
+          severity: "error",
+        });
+      }
+    }
+  }
+
+  return issues;
+}
+
+/**
+ * Failure scenario analysis: what happens if a founder delivers 0%, 50%, or full.
+ * Shows how equity SHOULD be redistributed based on actual performance.
+ */
+export interface FailureScenario {
+  founderId: string;
+  founderName: string;
+  scenarioLabel: string;
+  deliveryPercent: number;
+  adjustedEquity: number;
+  equityChange: number;
+}
+
+export function failureScenarios(founders: Founder[]): FailureScenario[] {
+  const scenarios: FailureScenario[] = [];
+  const baseEquity = calculateEquitySplit(founders);
+
+  for (const targetFounder of founders) {
+    for (const delivery of [0, 50]) {
+      // Simulate reduced KPI scores
+      const simulatedFounders = founders.map((f) => {
+        if (f.id !== targetFounder.id) return f;
+        return {
+          ...f,
+          kpis: f.kpis.map((kpi) => ({
+            ...kpi,
+            weight: kpi.weight * (delivery / 100),
+          })),
+        };
+      });
+
+      const newSplit = calculateEquitySplit(simulatedFounders);
+      const originalEquity = baseEquity.find(
+        (s) => s.founderId === targetFounder.id
+      )?.equityPercent || 0;
+      const newEquity = newSplit.find(
+        (s) => s.founderId === targetFounder.id
+      )?.equityPercent || 0;
+
+      scenarios.push({
+        founderId: targetFounder.id,
+        founderName: targetFounder.name,
+        scenarioLabel: delivery === 0 ? "Total failure (0%)" : "Partial delivery (50%)",
+        deliveryPercent: delivery,
+        adjustedEquity: newEquity,
+        equityChange: newEquity - originalEquity,
+      });
+    }
+  }
+
+  return scenarios;
 }
