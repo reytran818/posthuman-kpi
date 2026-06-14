@@ -64,11 +64,23 @@ export const AttachmentSchema = z.object({
 
 export type Attachment = z.infer<typeof AttachmentSchema>;
 
+export const CommitmentStatusSchema = z.enum([
+  "full_time",
+  "part_time",
+  "employed_elsewhere",
+  "student",
+  "transitioning",
+]);
+
+export type CommitmentStatus = z.infer<typeof CommitmentStatusSchema>;
+
 export const FounderSchema = z.object({
   id: z.string(),
   name: z.string(),
   role: z.string(),
   requestedEquity: z.number().min(0).max(100).optional(),
+  commitmentStatus: CommitmentStatusSchema.optional(),
+  fullTimeDate: z.string().optional(),
   resume: z.string().optional(),
   yearsExperience: z.number().optional(),
   relevantSkills: z.array(z.string()).optional(),
@@ -659,8 +671,59 @@ export function investorReadinessCheck(founders: Founder[]): InvestorReadiness {
     });
   }
 
-  // 3. Part-time founders with significant equity
+  // 3. Full-time commitment check
   for (const f of founders) {
+    const status = f.commitmentStatus || "full_time";
+    const eq = equitySplit.find((s) => s.founderId === f.id)?.equityPercent || 0;
+
+    if (status === "employed_elsewhere") {
+      redFlags.push({
+        id: `employed_${f.id}`,
+        category: "critical",
+        title: `${f.name} is employed elsewhere — not full-time`,
+        description:
+          "Investment requires ALL founders to be full-time. No serious investor will fund a team where a founder keeps their day job. This person must quit before or upon funding.",
+        fix: f.fullTimeDate
+          ? `Committed to go full-time by ${f.fullTimeDate}. Include this as a binding condition in the agreement.`
+          : `${f.name} must commit to a specific quit date. Without a hard date, reduce to advisor equity (1-5%).`,
+      });
+    } else if (status === "student") {
+      redFlags.push({
+        id: `student_${f.id}`,
+        category: "critical",
+        title: `${f.name} is currently a student — not full-time`,
+        description:
+          "Investment requires full-time commitment. YC and other accelerators expect founders to drop out or take leave. A student splitting time between coursework and a startup cannot move at the speed required.",
+        fix: f.fullTimeDate
+          ? `Committed to go full-time (leave/drop out) by ${f.fullTimeDate}. This must be a binding condition.`
+          : `${f.name} must commit to take leave or drop out upon funding. Set a specific date.`,
+      });
+    } else if (status === "part_time") {
+      redFlags.push({
+        id: `part_time_${f.id}`,
+        category: "critical",
+        title: `${f.name} is part-time with ${eq.toFixed(0)}% equity`,
+        description:
+          "Part-time founders are unacceptable post-investment. Investors require 100% commitment from the founding team. Split attention = split results.",
+        fix: f.fullTimeDate
+          ? `Transition to full-time by ${f.fullTimeDate}. Make this a vesting condition.`
+          : `${f.name} must go full-time or be reclassified as advisor (1-5% equity with vesting).`,
+      });
+    } else if (status === "transitioning" && !f.fullTimeDate) {
+      redFlags.push({
+        id: `transition_nodate_${f.id}`,
+        category: "warning",
+        title: `${f.name} is "transitioning" but has no committed date`,
+        description:
+          "Saying 'I'll go full-time eventually' isn't good enough. Investors need a specific date that becomes a binding condition of the equity agreement.",
+        fix: `Set a specific full-time start date. Make equity vesting conditional on meeting this date.`,
+      });
+    }
+  }
+
+  // Legacy: also detect from KPI text for anyone who didn't set status
+  for (const f of founders) {
+    if (f.commitmentStatus && f.commitmentStatus !== "full_time") continue;
     const hasPartTimeSignals =
       f.kpis.some((k) =>
         /other job|part.?time|side|moonlight/i.test(
@@ -675,12 +738,12 @@ export function investorReadinessCheck(founders: Founder[]): InvestorReadiness {
 
     if (hasPartTimeSignals && eq > 20) {
       redFlags.push({
-        id: `part_time_${f.id}`,
+        id: `part_time_signal_${f.id}`,
         category: "critical",
         title: `${f.name} appears part-time with ${eq.toFixed(0)}% equity`,
         description:
-          "YC requires founders to be full-time. Investors see part-time founders as flight risks. A founder keeping another job signals lack of commitment.",
-        fix: `Either ${f.name} goes full-time (with a timeline), or reduce to advisor-level equity (1-5%) with milestone-based vesting to earn more.`,
+          "KPI text references another job or part-time work. Investment requires ALL founders full-time. Quit or be reclassified.",
+        fix: `${f.name} must commit to full-time with a specific date, or reduce to advisor-level equity (1-5%).`,
       });
     }
   }

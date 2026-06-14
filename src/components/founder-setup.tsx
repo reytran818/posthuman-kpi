@@ -77,6 +77,8 @@ export function FounderSetup({
       name: newName.trim(),
       role: newRole.trim(),
       requestedEquity: 0,
+      commitmentStatus: "full_time",
+      fullTimeDate: "",
       resume: "",
       yearsExperience: 0,
       relevantSkills: [],
@@ -323,7 +325,7 @@ export function FounderSetup({
                       />
                     </div>
 
-                    {/* Years of Experience */}
+                    {/* Years of Experience + Commitment Status */}
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Years of Relevant Experience</Label>
@@ -339,7 +341,58 @@ export function FounderSetup({
                           }
                         />
                       </div>
+                      <div className="space-y-2">
+                        <Label>Current Commitment</Label>
+                        <Select
+                          value={founder.commitmentStatus || "full_time"}
+                          onValueChange={(val) =>
+                            updateFounder(founder.id, {
+                              commitmentStatus: val as Founder["commitmentStatus"],
+                            })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="full_time">Full-time (dedicated)</SelectItem>
+                            <SelectItem value="part_time">Part-time</SelectItem>
+                            <SelectItem value="employed_elsewhere">Employed elsewhere</SelectItem>
+                            <SelectItem value="student">Student</SelectItem>
+                            <SelectItem value="transitioning">Transitioning to full-time</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
+
+                    {/* Full-time date (shown for non-full-time) */}
+                    {founder.commitmentStatus &&
+                      founder.commitmentStatus !== "full_time" && (
+                        <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg space-y-2">
+                          <p className="text-sm font-medium text-destructive">
+                            ⚠ Investment requires full-time commitment from all founders
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {founder.commitmentStatus === "employed_elsewhere"
+                              ? "You must quit your current job before or upon receiving investment."
+                              : founder.commitmentStatus === "student"
+                              ? "You must drop out or take leave before or upon receiving investment."
+                              : "You must transition to full-time with a binding commitment date."}
+                          </p>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Full-time start date</Label>
+                            <Input
+                              type="date"
+                              value={founder.fullTimeDate || ""}
+                              onChange={(e) =>
+                                updateFounder(founder.id, {
+                                  fullTimeDate: e.target.value,
+                                })
+                              }
+                            />
+                          </div>
+                        </div>
+                      )}
 
                     {/* Skills */}
                     <div className="space-y-2">

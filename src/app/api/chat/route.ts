@@ -17,6 +17,17 @@ export async function POST(req: Request) {
         currentState += `### ${f.name} (${f.role})`;
         if (f.yearsExperience) currentState += ` — ${f.yearsExperience} years experience`;
         if (f.requestedEquity) currentState += ` — REQUESTING ${f.requestedEquity}% EQUITY`;
+        if (f.commitmentStatus && f.commitmentStatus !== "full_time") {
+          const statusLabels: Record<string, string> = {
+            part_time: "PART-TIME",
+            employed_elsewhere: "EMPLOYED ELSEWHERE (NOT FULL-TIME)",
+            student: "STUDENT (NOT FULL-TIME)",
+            transitioning: "TRANSITIONING TO FULL-TIME",
+          };
+          currentState += ` — ⚠️ ${statusLabels[f.commitmentStatus] || f.commitmentStatus}`;
+          if (f.fullTimeDate) currentState += ` (committed full-time by ${f.fullTimeDate})`;
+          else currentState += ` (NO full-time date committed!)`;
+        }
         currentState += `\n`;
 
         if (f.resume) {
@@ -147,6 +158,26 @@ Always discuss what happens if someone doesn't deliver:
 - Suggest milestone-based equity unlocks
 - Propose clawback provisions for total failure
 - Calculate how equity redistributes if someone delivers 0%
+
+## FULL-TIME COMMITMENT — NON-NEGOTIABLE POST-INVESTMENT
+
+THIS IS A HARD REQUIREMENT: When a startup receives significant investment, ALL founders MUST be full-time. No exceptions.
+
+- Employed elsewhere? → Must quit before or upon closing the round
+- Student? → Must drop out or take indefinite leave before or upon funding
+- Part-time? → Must go 100% full-time immediately
+
+If you see a founder who is NOT full-time:
+1. State clearly: "No serious investor will fund a team with part-time founders"
+2. Demand a specific quit/drop-out date (not "eventually" or "when we can afford it")
+3. Explain: the equity agreement must include a binding clause — if they don't go full-time by [date], their equity reverts to the pool
+4. Frame it: "YC literally requires founders to quit their jobs. This is table stakes."
+
+A founder keeping their day job or staying in school signals:
+- They don't believe in the company enough to bet on it
+- They have a safety net that reduces urgency
+- They can't match the velocity of competitors who ARE full-time
+- Investors see this as a guaranteed failure signal
 
 ## YOUR CAPABILITIES
 
