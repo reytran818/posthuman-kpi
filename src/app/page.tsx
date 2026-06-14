@@ -5,42 +5,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FounderSetup } from "@/components/founder-setup";
 import { KPIInput } from "@/components/kpi-input";
 import { ResultsDashboard } from "@/components/results-dashboard";
-import { useLocalStorage } from "@/hooks/use-local-storage";
-import type { Founder } from "@/lib/kpi-engine";
-import { Users, Target, BarChart3, RotateCcw } from "lucide-react";
+import { useSharedFounders } from "@/hooks/use-shared-founders";
+import { Users, Target, BarChart3, RotateCcw, Cloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function Home() {
-  const [founders, setFounders, isHydrated] = useLocalStorage<Founder[]>(
-    "posthuman-founders",
-    []
-  );
-  const [activeTab, setActiveTab] = useLocalStorage<string>(
-    "posthuman-active-tab",
-    "founders"
-  );
-  const [, setLastUpdated] = useLocalStorage<string>(
-    "posthuman-last-updated",
-    ""
-  );
+  const { founders, setFounders, isLoading, lastSaved, resetAll } =
+    useSharedFounders();
+  const [activeTab, setActiveTab] = useState("founders");
 
-  function updateFounders(newFounders: Founder[]) {
-    setFounders(newFounders);
-    setLastUpdated(new Date().toISOString());
-  }
-
-  function resetAll() {
-    if (confirm("Reset all data? This cannot be undone.")) {
-      setFounders([]);
-      setActiveTab("founders");
-      setLastUpdated("");
-    }
-  }
-
-  if (!isHydrated) {
+  if (isLoading) {
     return (
       <main className="min-h-screen flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Loading...</div>
+        <div className="animate-pulse text-muted-foreground">
+          Loading shared data...
+        </div>
       </main>
     );
   }
@@ -59,10 +38,24 @@ export default function Home() {
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
-              <span className="inline-block h-2 w-2 rounded-full bg-green-500" />
-              AI-Assisted • Auto-saved
+              <Cloud className="h-3.5 w-3.5 text-green-500" />
+              <span>
+                Synced
+                {lastSaved && (
+                  <> • {new Date(lastSaved).toLocaleTimeString()}</>
+                )}
+              </span>
             </div>
-            <Button variant="ghost" size="sm" onClick={resetAll}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                if (confirm("Reset all data for everyone? This cannot be undone.")) {
+                  resetAll();
+                  setActiveTab("founders");
+                }
+              }}
+            >
               <RotateCcw className="h-3.5 w-3.5" />
             </Button>
           </div>
@@ -97,7 +90,7 @@ export default function Home() {
           <TabsContent value="founders" className="mt-6">
             <FounderSetup
               founders={founders}
-              setFounders={updateFounders}
+              setFounders={setFounders}
               onComplete={() => setActiveTab("kpis")}
             />
           </TabsContent>
@@ -105,7 +98,7 @@ export default function Home() {
           <TabsContent value="kpis" className="mt-6">
             <KPIInput
               founders={founders}
-              setFounders={updateFounders}
+              setFounders={setFounders}
               onComplete={() => setActiveTab("results")}
             />
           </TabsContent>
