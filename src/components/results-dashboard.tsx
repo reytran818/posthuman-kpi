@@ -22,6 +22,7 @@ import {
   kpiToEnterpriseValue,
   validateKPIs,
   failureScenarios,
+  assignRoles,
 } from "@/lib/kpi-engine";
 import {
   PieChart,
@@ -45,6 +46,7 @@ import {
   GitMerge,
   XCircle,
   ShieldAlert,
+  UserCheck,
 } from "lucide-react";
 
 interface ResultsDashboardProps {
@@ -65,6 +67,7 @@ export function ResultsDashboard({ founders }: ResultsDashboardProps) {
   const analysis = fairnessAnalysis(founders);
   const kpiIssues = validateKPIs(founders);
   const scenarios = failureScenarios(founders);
+  const roleAssignments = assignRoles(founders);
 
   const pieData = equitySplit.map((s, i) => ({
     name: s.founderName,
@@ -100,6 +103,54 @@ export function ResultsDashboard({ founders }: ResultsDashboardProps) {
           Execution is weighted 6.7× higher than ideas.
         </p>
       </div>
+
+      {/* AI-Assigned Roles */}
+      <Card className="border-primary/40">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <UserCheck className="h-5 w-5 text-primary" />
+            Evidence-Based Role Assignment
+          </CardTitle>
+          <CardDescription>
+            Roles determined by actual KPIs and contributions — not
+            self-declared titles
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {roleAssignments.map((ra) => (
+            <div
+              key={ra.founderId}
+              className={`flex items-center justify-between p-3 rounded-lg border ${
+                ra.mismatch
+                  ? "border-yellow-500/40 bg-yellow-500/5"
+                  : "border-green-500/30 bg-green-500/5"
+              }`}
+            >
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">{ra.founderName}</span>
+                  {ra.mismatch && (
+                    <Badge variant="outline" className="text-yellow-500 border-yellow-500/50 text-xs">
+                      Role Mismatch
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">{ra.reasoning}</p>
+              </div>
+              <div className="text-right space-y-1">
+                <div className="text-sm font-semibold text-primary">
+                  {ra.recommendedRole}
+                </div>
+                {ra.mismatch && (
+                  <p className="text-xs text-muted-foreground line-through">
+                    Self-declared: {ra.declaredRole}
+                  </p>
+                )}
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
 
       {/* Overlap warnings at top */}
       {analysis.overlaps.length > 0 && (

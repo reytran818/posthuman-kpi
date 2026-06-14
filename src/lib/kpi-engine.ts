@@ -592,3 +592,85 @@ export function failureScenarios(founders: Founder[]): FailureScenario[] {
 
   return scenarios;
 }
+
+/**
+ * Assigns a recommended role based on where a founder's actual value lies
+ * (KPI categories + contribution types), not what they call themselves.
+ */
+export interface RoleAssignment {
+  founderId: string;
+  founderName: string;
+  declaredRole: string;
+  recommendedRole: string;
+  reasoning: string;
+  mismatch: boolean;
+  topCategory: string;
+}
+
+const ROLE_MAP: Record<string, { title: string; keywords: string[] }> = {
+  revenue: { title: "Chief Revenue Officer", keywords: ["revenue", "sales", "fundraising", "deals"] },
+  fundraising: { title: "Chief Financial Officer", keywords: ["fundraising", "capital", "investor relations"] },
+  product: { title: "Chief Product Officer", keywords: ["product", "features", "design", "roadmap", "ux"] },
+  technical: { title: "Chief Technology Officer", keywords: ["technical", "engineering", "code", "architecture"] },
+  operations: { title: "Chief Operating Officer", keywords: ["operations", "processes", "hiring", "legal"] },
+  marketing: { title: "Chief Marketing Officer", keywords: ["marketing", "growth", "brand", "content", "users"] },
+  leadership: { title: "Chief Executive Officer", keywords: ["leadership", "strategy", "vision", "overall"] },
+  culture: { title: "Head of People & Culture", keywords: ["culture", "team", "morale", "hr"] },
+};
+
+export function assignRoles(founders: Founder[]): RoleAssignment[] {
+  return founders.map((f) => {
+    const categoryScores: Record<string, number> = {};
+
+    for (const kpi of f.kpis) {
+      categoryScores[kpi.category] =
+        (categoryScores[kpi.category] || 0) + kpi.weight;
+    }
+
+    if (f.contributions) {
+      for (const c of f.contributions) {
+        if (c.type === "execution" || c.type === "technical_build") {
+          categoryScores["technical"] = (categoryScores["technical"] || 0) + 30;
+        } else if (c.type === "revenue_generated") {
+          categoryScores["revenue"] = (categoryScores["revenue"] || 0) + 30;
+        } else if (c.type === "capital_invested") {
+          categoryScores["fundraising"] = (categoryScores["fundraising"] || 0) + 25;
+        } else if (c.type === "ip_created") {
+          categoryScores["product"] = (categoryScores["product"] || 0) + 20;
+        } else if (c.type === "team_recruited" || c.type === "network_connections") {
+          categoryScores["operations"] = (categoryScores["operations"] || 0) + 15;
+        } else if (c.type === "idea_vision") {
+          categoryScores["leadership"] = (categoryScores["leadership"] || 0) + 5;
+        } else if (c.type === "market_research" || c.type === "domain_expertise") {
+          categoryScores["marketing"] = (categoryScores["marketing"] || 0) + 10;
+        }
+      }
+    }
+
+    const sorted = Object.entries(categoryScores).sort(([, a], [, b]) => b - a);
+    const topCategory = sorted.length > 0 ? sorted[0][0] : "leadership";
+    const mapped = ROLE_MAP[topCategory] || ROLE_MAP["operations"];
+    const recommendedRole = mapped.title;
+
+    // Check if the declared role matches what we'd assign
+    const declaredLower = f.role.toLowerCase();
+    const mismatch =
+      !mapped.keywords.some((kw) => declaredLower.includes(kw)) &&
+      !declaredLower.includes(recommendedRole.toLowerCase().split(" ").pop() || "");
+
+    const reasoning =
+      sorted.length > 0
+        ? `${Math.round((sorted[0][1] / Math.max(Object.values(categoryScores).reduce((a, b) => a + b, 0), 1)) * 100)}% of value in "${topCategory}" category`
+        : "No KPIs or contributions yet";
+
+    return {
+      founderId: f.id,
+      founderName: f.name,
+      declaredRole: f.role,
+      recommendedRole,
+      reasoning,
+      mismatch,
+      topCategory,
+    };
+  });
+}
