@@ -1,36 +1,60 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Posthuman Inc. — Founders KPI Agreement Tool
 
-## Getting Started
+An AI-assisted web application that helps startup founders define fair and equitable KPIs (Key Performance Indicators) and converts them into enterprise value contributions for equity allocation.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Founder Setup** — Add founding team members and their roles
+- **AI-Assisted KPI Input** — Chat with an AI assistant that suggests appropriate KPIs based on each founder's role
+- **Enterprise Value Algorithm** — Transparent, multi-factor algorithm that converts KPIs to equity percentages
+- **Fairness Analysis** — Automated detection of imbalanced allocations with recommendations
+- **Visual Dashboard** — Pie charts, bar charts, and detailed breakdowns of equity distribution
+
+## Algorithm
+
+Each KPI is scored using:
+
+```
+score = weight × categoryMultiplier × difficultyMultiplier × timeDecay × scaleNorm
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- **Weight (0–100):** Founder-defined importance
+- **Category Multiplier:** Revenue (1.5×) > Fundraising (1.4×) > Product (1.3×) > Technical (1.2×) > Leadership (1.15×) > Marketing (1.1×) > Operations (1.0×) > Culture (0.9×)
+- **Difficulty Multiplier:** Low (0.6×), Medium (1.0×), High (1.5×), Extreme (2.2×)
+- **Time Decay:** 0.85^(months/12) — longer timeframes reduce annualized value
+- **Scale Normalization:** log₁₀(targetValue + 1) — prevents large numbers from dominating
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Equity percentage = founder's total score ÷ all founders' total scores × 100
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Setup
 
-## Learn More
+1. Clone the repository
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Create a `.env.local` file with your AWS Bedrock credentials:
+   ```bash
+   cp .env.example .env.local
+   # Edit .env.local and add your AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION
+   ```
+4. Run the development server:
+   ```bash
+   npm run dev
+   ```
+5. Open [http://localhost:3000](http://localhost:3000)
 
-To learn more about Next.js, take a look at the following resources:
+## Tech Stack
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Framework:** Next.js 15 (App Router)
+- **UI:** shadcn/ui + Tailwind CSS
+- **AI:** Vercel AI SDK + Claude via Amazon Bedrock
+- **Charts:** Recharts
+- **Validation:** Zod
+- **Deployment:** Vercel
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Deploy to Vercel
 
-## Deploy on Vercel
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/your-repo/posthuman-kpi&env=AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_REGION)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Set `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_REGION` in your Vercel project environment variables.
