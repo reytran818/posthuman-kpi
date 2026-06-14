@@ -594,6 +594,263 @@ export function failureScenarios(founders: Founder[]): FailureScenario[] {
 }
 
 /**
+ * Investor Readiness Assessment — flags issues that would concern
+ * sophisticated investors (YC, a16z, Sequoia, etc.)
+ */
+export interface InvestorRedFlag {
+  id: string;
+  category: "critical" | "warning" | "suggestion";
+  title: string;
+  description: string;
+  fix: string;
+}
+
+export interface InvestorReadiness {
+  score: number; // 0-100
+  grade: "A" | "B" | "C" | "D" | "F";
+  redFlags: InvestorRedFlag[];
+  vestingStructure: VestingRecommendation;
+  capTable: CapTableEntry[];
+}
+
+export interface VestingRecommendation {
+  cliff: number; // months
+  totalVesting: number; // months
+  accelerationTrigger: string;
+  performanceGating: boolean;
+}
+
+export interface CapTableEntry {
+  holder: string;
+  type: "founder" | "option_pool" | "reserved";
+  percent: number;
+  vested: number;
+  notes: string;
+}
+
+export function investorReadinessCheck(founders: Founder[]): InvestorReadiness {
+  const redFlags: InvestorRedFlag[] = [];
+  const equitySplit = calculateEquitySplit(founders);
+
+  // 1. Equal splits with no rationale
+  const equities = equitySplit.map((s) => s.equityPercent);
+  const maxDiff = Math.max(...equities) - Math.min(...equities);
+  if (maxDiff < 3 && founders.length > 1) {
+    redFlags.push({
+      id: "equal_split",
+      category: "critical",
+      title: "Equal equity split detected",
+      description:
+        "YC and top investors view equal splits as a sign that founders haven't had hard conversations about value. It suggests avoidance, not fairness.",
+      fix: "Differentiate equity based on role criticality, time commitment, capital invested, and opportunity cost. Even a 55/45 split shows intentionality.",
+    });
+  }
+
+  // 2. No option pool reserved
+  const totalFounderEquity = equities.reduce((sum, e) => sum + e, 0);
+  if (totalFounderEquity > 85) {
+    redFlags.push({
+      id: "no_option_pool",
+      category: "critical",
+      title: "No employee option pool reserved",
+      description:
+        "Investors expect a 10-20% option pool pre-money. Without it, early hires can't be properly incentivized, and investors will force dilution at Series A.",
+      fix: "Reserve 10-15% for an employee stock option pool (ESOP). This is standard for YC companies.",
+    });
+  }
+
+  // 3. Part-time founders with significant equity
+  for (const f of founders) {
+    const hasPartTimeSignals =
+      f.kpis.some((k) =>
+        /other job|part.?time|side|moonlight/i.test(
+          `${k.name} ${k.description}`
+        )
+      ) ||
+      f.contributions?.some((c) =>
+        /other job|part.?time|side/i.test(c.description)
+      );
+
+    const eq = equitySplit.find((s) => s.founderId === f.id)?.equityPercent || 0;
+
+    if (hasPartTimeSignals && eq > 20) {
+      redFlags.push({
+        id: `part_time_${f.id}`,
+        category: "critical",
+        title: `${f.name} appears part-time with ${eq.toFixed(0)}% equity`,
+        description:
+          "YC requires founders to be full-time. Investors see part-time founders as flight risks. A founder keeping another job signals lack of commitment.",
+        fix: `Either ${f.name} goes full-time (with a timeline), or reduce to advisor-level equity (1-5%) with milestone-based vesting to earn more.`,
+      });
+    }
+  }
+
+  // 4. No vesting mentioned
+  redFlags.push({
+    id: "vesting_required",
+    category: founders.length > 1 ? "critical" : "warning",
+    title: "Vesting schedule required",
+    description:
+      "Standard: 4-year vesting with 1-year cliff. Without vesting, a founder can walk away day 1 with full equity. Every serious investor requires this.",
+    fix: "Add 4-year vesting, 1-year cliff, monthly thereafter. Consider acceleration on change-of-control and performance milestones.",
+  });
+
+  // 5. No IP assignment
+  redFlags.push({
+    id: "ip_assignment",
+    category: "warning",
+    title: "IP assignment agreement needed",
+    description:
+      "All work product must be assigned to the company. Without this, a departing founder could claim ownership of code, designs, or patents.",
+    fix: "Include a PIIA (Proprietary Information and Inventions Assignment) agreement for all founders.",
+  });
+
+  // 6. No 83(b) election reminder
+  redFlags.push({
+    id: "83b_election",
+    category: "warning",
+    title: "83(b) election must be filed within 30 days",
+    description:
+      "If founders receive restricted stock, an 83(b) election avoids a massive tax bill when shares vest. Missing the 30-day deadline is irreversible.",
+    fix: "File 83(b) elections with the IRS within 30 days of stock issuance. This is non-negotiable for US-based founders.",
+  });
+
+  // 7. Single founder doing everything
+  if (founders.length === 1) {
+    redFlags.push({
+      id: "solo_founder",
+      category: "warning",
+      title: "Solo founder risk",
+      description:
+        "YC and most VCs prefer 2-3 co-founders. Solo founders have higher burnout rates and lack built-in accountability.",
+      fix: "Consider adding a technical or business co-founder. If staying solo, demonstrate exceptional execution velocity.",
+    });
+  }
+
+  // 8. Too many founders
+  if (founders.length > 4) {
+    redFlags.push({
+      id: "too_many_founders",
+      category: "warning",
+      title: `${founders.length} founders is unusually high`,
+      description:
+        "Most successful startups have 2-3 founders. More than 4 creates decision-making overhead and equity fragmentation that concerns investors.",
+      fix: "Consider whether all founding members need founder-level equity. Some may be better as early employees with option grants.",
+    });
+  }
+
+  // 9. Ideas-only founders
+  for (const f of founders) {
+    const contribs = f.contributions || [];
+    const onlyIdeas =
+      contribs.length > 0 &&
+      contribs.every(
+        (c) => c.type === "idea_vision" || c.type === "market_research"
+      );
+    if (onlyIdeas && f.kpis.length === 0) {
+      redFlags.push({
+        id: `ideas_only_${f.id}`,
+        category: "critical",
+        title: `${f.name} has no execution commitment`,
+        description:
+          "This person contributes only ideas with no concrete KPIs. Investors will ask: 'What does this person actually DO?' Ideas alone don't justify equity.",
+        fix: `${f.name} must commit to specific, measurable deliverables. Otherwise, reclassify as advisor (0.5-2% with vesting).`,
+      });
+    }
+  }
+
+  // 10. Vague KPIs present
+  const kpiIssues = validateKPIs(founders);
+  if (kpiIssues.filter((i) => i.severity === "error").length > 0) {
+    redFlags.push({
+      id: "vague_kpis",
+      category: "warning",
+      title: `${kpiIssues.filter((i) => i.severity === "error").length} vague/unmeasurable KPIs detected`,
+      description:
+        "Investors need to see that founders can set concrete, measurable goals. Vague KPIs signal inability to execute or lack of business sophistication.",
+      fix: "Replace all vague KPIs with specific numbers: revenue targets, user counts, shipping dates, or capital raised.",
+    });
+  }
+
+  // 11. No revenue/fundraising KPIs at all
+  const hasRevenue = founders.some((f) =>
+    f.kpis.some((k) => k.category === "revenue" || k.category === "fundraising")
+  );
+  if (!hasRevenue && founders.length > 0) {
+    redFlags.push({
+      id: "no_revenue_kpis",
+      category: "warning",
+      title: "No revenue or fundraising targets",
+      description:
+        "Every startup needs someone accountable for money — either generating revenue or raising capital. Investors will want to know who owns this.",
+      fix: "Add specific revenue targets ($X MRR by date) or fundraising milestones ($X raised by date).",
+    });
+  }
+
+  // 12. Equity requests exceed 100%
+  const totalRequested = founders.reduce(
+    (sum, f) => sum + (f.requestedEquity || 0),
+    0
+  );
+  if (totalRequested > 100) {
+    redFlags.push({
+      id: "over_100",
+      category: "critical",
+      title: `Equity requests total ${totalRequested}% (exceeds 100%)`,
+      description:
+        "This is a fundamental red flag — founders can't agree on basic math. This would immediately disqualify you with any investor.",
+      fix: "Reconcile equity requests before any investor conversation. Use this tool's algorithm as an objective baseline.",
+    });
+  }
+
+  // Score calculation
+  const criticals = redFlags.filter((f) => f.category === "critical").length;
+  const warnings = redFlags.filter((f) => f.category === "warning").length;
+  let score = 100 - criticals * 20 - warnings * 8;
+  score = Math.max(0, Math.min(100, score));
+
+  const grade: "A" | "B" | "C" | "D" | "F" =
+    score >= 85 ? "A" : score >= 70 ? "B" : score >= 55 ? "C" : score >= 40 ? "D" : "F";
+
+  // Option pool recommendation
+  const optionPoolPercent = Math.max(0, 100 - totalFounderEquity);
+  const capTable: CapTableEntry[] = [
+    ...founders.map((f) => {
+      const eq = equitySplit.find((s) => s.founderId === f.id)?.equityPercent || 0;
+      // Apply option pool reduction (founders get 85% of their calculated split)
+      const adjustedPercent = eq * 0.85;
+      return {
+        holder: f.name,
+        type: "founder" as const,
+        percent: Number(adjustedPercent.toFixed(2)),
+        vested: 0,
+        notes: f.role,
+      };
+    }),
+    {
+      holder: "Employee Option Pool (ESOP)",
+      type: "option_pool" as const,
+      percent: 15,
+      vested: 0,
+      notes: "Reserved for first 10-20 hires, advisors",
+    },
+  ];
+
+  return {
+    score,
+    grade,
+    redFlags,
+    vestingStructure: {
+      cliff: 12,
+      totalVesting: 48,
+      accelerationTrigger: "Double-trigger on acquisition (change of control + termination)",
+      performanceGating: true,
+    },
+    capTable,
+  };
+}
+
+/**
  * Assigns a recommended role based on where a founder's actual value lies
  * (KPI categories + contribution types), not what they call themselves.
  */

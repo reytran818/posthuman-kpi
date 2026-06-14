@@ -23,6 +23,7 @@ import {
   validateKPIs,
   failureScenarios,
   assignRoles,
+  investorReadinessCheck,
 } from "@/lib/kpi-engine";
 import {
   PieChart,
@@ -47,6 +48,8 @@ import {
   XCircle,
   ShieldAlert,
   UserCheck,
+  Target,
+  Clock,
 } from "lucide-react";
 
 interface ResultsDashboardProps {
@@ -68,6 +71,7 @@ export function ResultsDashboard({ founders }: ResultsDashboardProps) {
   const kpiIssues = validateKPIs(founders);
   const scenarios = failureScenarios(founders);
   const roleAssignments = assignRoles(founders);
+  const investorCheck = investorReadinessCheck(founders);
 
   const pieData = equitySplit.map((s, i) => ({
     name: s.founderName,
@@ -103,6 +107,194 @@ export function ResultsDashboard({ founders }: ResultsDashboardProps) {
           Execution is weighted 6.7× higher than ideas.
         </p>
       </div>
+
+      {/* Investor Readiness Score */}
+      <Card className={`border-2 ${
+        investorCheck.grade === "A" ? "border-green-500" :
+        investorCheck.grade === "B" ? "border-blue-500" :
+        investorCheck.grade === "C" ? "border-yellow-500" :
+        "border-destructive"
+      }`}>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Target className="h-5 w-5" />
+                Investor Readiness Score
+              </CardTitle>
+              <CardDescription>
+                Would this founders agreement pass YC due diligence?
+              </CardDescription>
+            </div>
+            <div className="text-right">
+              <div className={`text-4xl font-bold ${
+                investorCheck.grade === "A" ? "text-green-500" :
+                investorCheck.grade === "B" ? "text-blue-500" :
+                investorCheck.grade === "C" ? "text-yellow-500" :
+                "text-destructive"
+              }`}>
+                {investorCheck.grade}
+              </div>
+              <div className="text-sm text-muted-foreground font-mono">
+                {investorCheck.score}/100
+              </div>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Progress
+            value={investorCheck.score}
+            className="h-3"
+          />
+
+          {/* Red flags */}
+          {investorCheck.redFlags.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">
+                {investorCheck.redFlags.filter((f) => f.category === "critical").length} Critical •{" "}
+                {investorCheck.redFlags.filter((f) => f.category === "warning").length} Warnings •{" "}
+                {investorCheck.redFlags.filter((f) => f.category === "suggestion").length} Suggestions
+              </p>
+              {investorCheck.redFlags
+                .sort((a, b) => {
+                  const order = { critical: 0, warning: 1, suggestion: 2 };
+                  return order[a.category] - order[b.category];
+                })
+                .map((flag) => (
+                <div
+                  key={flag.id}
+                  className={`p-3 rounded-lg border ${
+                    flag.category === "critical"
+                      ? "bg-destructive/10 border-destructive/30"
+                      : flag.category === "warning"
+                      ? "bg-yellow-500/10 border-yellow-500/30"
+                      : "bg-muted border-border"
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className={`h-4 w-4 mt-0.5 shrink-0 ${
+                      flag.category === "critical" ? "text-destructive" :
+                      flag.category === "warning" ? "text-yellow-500" :
+                      "text-muted-foreground"
+                    }`} />
+                    <div className="space-y-1 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">{flag.title}</span>
+                        <Badge
+                          variant={flag.category === "critical" ? "destructive" : "outline"}
+                          className="text-xs"
+                        >
+                          {flag.category}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{flag.description}</p>
+                      <p className="text-xs font-medium text-primary">→ {flag.fix}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Cap Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <DollarSign className="h-5 w-5" />
+            Recommended Cap Table
+          </CardTitle>
+          <CardDescription>
+            Investor-ready equity structure with ESOP allocation
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            {investorCheck.capTable.map((entry, i) => (
+              <div
+                key={i}
+                className={`flex items-center justify-between p-3 rounded-lg border ${
+                  entry.type === "option_pool"
+                    ? "bg-primary/5 border-primary/30"
+                    : "bg-muted/50"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`h-3 w-3 rounded-full ${
+                      entry.type === "option_pool"
+                        ? "bg-primary"
+                        : `bg-[${COLORS[i % COLORS.length]}]`
+                    }`}
+                    style={{
+                      backgroundColor:
+                        entry.type === "option_pool"
+                          ? undefined
+                          : COLORS[i % COLORS.length],
+                    }}
+                  />
+                  <div>
+                    <span className="text-sm font-medium">{entry.holder}</span>
+                    <p className="text-xs text-muted-foreground">{entry.notes}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="font-mono font-bold">{entry.percent}%</span>
+                  {entry.type === "option_pool" && (
+                    <p className="text-xs text-muted-foreground">ESOP</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Vesting structure */}
+          <Separator />
+          <div className="space-y-2">
+            <p className="text-sm font-medium flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Standard Vesting Schedule
+            </p>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="p-2 bg-muted rounded">
+                <span className="text-muted-foreground">Cliff:</span>{" "}
+                <span className="font-mono font-medium">
+                  {investorCheck.vestingStructure.cliff} months
+                </span>
+              </div>
+              <div className="p-2 bg-muted rounded">
+                <span className="text-muted-foreground">Total Vest:</span>{" "}
+                <span className="font-mono font-medium">
+                  {investorCheck.vestingStructure.totalVesting} months
+                </span>
+              </div>
+              <div className="p-2 bg-muted rounded col-span-2">
+                <span className="text-muted-foreground">Acceleration:</span>{" "}
+                <span className="text-xs font-medium">
+                  {investorCheck.vestingStructure.accelerationTrigger}
+                </span>
+              </div>
+              <div className="p-2 bg-muted rounded col-span-2">
+                <span className="text-muted-foreground">Performance Gating:</span>{" "}
+                <span className="font-medium text-primary">
+                  {investorCheck.vestingStructure.performanceGating
+                    ? "Yes — equity tranches unlock based on KPI achievement"
+                    : "No"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-3 bg-muted rounded-lg text-xs text-muted-foreground space-y-1">
+            <p className="font-medium text-foreground">Legal Requirements:</p>
+            <p>• File 83(b) election within 30 days of stock issuance (US founders)</p>
+            <p>• Execute IP Assignment Agreement (PIIA) before any work begins</p>
+            <p>• Restricted Stock Purchase Agreement for all founders</p>
+            <p>• Board-approved stock option plan for ESOP</p>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* AI-Assigned Roles */}
       <Card className="border-primary/40">
@@ -607,10 +799,19 @@ export function ResultsDashboard({ founders }: ResultsDashboardProps) {
         <CardHeader>
           <CardTitle>Algorithm Transparency</CardTitle>
           <CardDescription>
-            How equity is calculated — execution over ideas
+            How equity is calculated — designed to survive investor due diligence
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 text-sm text-muted-foreground">
+          <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg text-xs">
+            <p className="font-medium text-foreground mb-1">Why this approach passes investor scrutiny:</p>
+            <p>
+              This algorithm produces differentiated, evidence-based equity splits — not arbitrary equal splits.
+              It rewards measurable commitments and past execution, applies industry-standard weightings,
+              and incorporates vesting/clawback to protect all parties. This is the kind of rigor YC, Sequoia,
+              and a16z expect to see in founding agreements.
+            </p>
+          </div>
           <div className="grid grid-cols-2 gap-6">
             <div className="space-y-3">
               <p className="font-medium text-foreground">
@@ -651,10 +852,9 @@ export function ResultsDashboard({ founders }: ResultsDashboardProps) {
           </div>
           <Separator />
           <p>
-            <strong>Equity %</strong> = founder total score ÷ all founders total
-            × 100. The 70/30 split ensures that future commitments to execute
-            outweigh past contributions, while still rewarding those who have
-            already invested time, money, and effort.
+            <strong>Equity %</strong> = (founder score ÷ total scores × 85%) + 15% ESOP reserved.
+            The 70/30 split ensures future execution commitments outweigh past work.
+            All equity subject to 4-year vesting with 1-year cliff.
           </p>
         </CardContent>
       </Card>
