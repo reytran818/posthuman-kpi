@@ -88,6 +88,7 @@ export function KPIInput({ founders, setFounders, onComplete }: KPIInputProps) {
   const [editForm, setEditForm] = useState<Record<string, string | number>>({});
   const [aiSuggesting, setAiSuggesting] = useState(false);
   const [aiReasoning, setAiReasoning] = useState("");
+  const [showManualFields, setShowManualFields] = useState(false);
   const [kpiForm, setKpiForm] = useState({
     name: "",
     description: "",
@@ -215,26 +216,32 @@ export function KPIInput({ founders, setFounders, onComplete }: KPIInputProps) {
     setAiSuggesting(true);
     setAiReasoning("");
     try {
+      const existingKPIs = activeFounder?.kpis.map((k) => k.name).join(", ");
       const res = await fetch("/api/suggest-kpi", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: kpiForm.name,
-          description: kpiForm.description,
-          category: kpiForm.category,
-          timeframeMonths: kpiForm.timeframeMonths,
-          difficulty: kpiForm.difficulty,
+          actionItem: kpiForm.name,
           role: activeFounder?.role,
+          existingKPIs,
         }),
       });
       if (res.ok) {
         const suggestion = await res.json();
         setKpiForm((prev) => ({
           ...prev,
+          name: suggestion.name || prev.name,
+          description: suggestion.description || prev.description,
+          category: suggestion.category || prev.category,
           targetValue: suggestion.targetValue,
           unit: suggestion.unit,
           weight: suggestion.weight,
+          timeframeMonths: suggestion.timeframeMonths || prev.timeframeMonths,
           difficulty: suggestion.difficulty,
+          dealType: suggestion.dealType || "standard",
+          theyGet: suggestion.theyGet || "",
+          weGet: suggestion.weGet || "",
+          successCriteria: suggestion.successCriteria || "",
         }));
         setAiReasoning(suggestion.reasoning);
       }
@@ -309,274 +316,407 @@ export function KPIInput({ founders, setFounders, onComplete }: KPIInputProps) {
                 New KPI for {activeFounder?.name}
               </CardTitle>
               <CardDescription>
-                {activeFounder?.role} — Define a measurable outcome that
-                contributes to company value.
+                {activeFounder?.role} — Just describe what you&apos;ll deliver. AI generates the numbers.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              {/* AI-First Input */}
+              <div className="space-y-3">
                 <div className="space-y-2">
-                  <Label>KPI Name</Label>
-                  <Input
-                    placeholder="e.g., Monthly Recurring Revenue"
-                    value={kpiForm.name}
-                    onChange={(e) =>
-                      setKpiForm({ ...kpiForm, name: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Category</Label>
-                  <Select
-                    value={kpiForm.category}
-                    onValueChange={(v) =>
-                      setKpiForm({ ...kpiForm, category: v as KPICategory })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CATEGORIES.map((c) => (
-                        <SelectItem key={c.value} value={c.value}>
-                          {c.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Description</Label>
-                <Input
-                  placeholder="What does achieving this look like?"
-                  value={kpiForm.description}
-                  onChange={(e) =>
-                    setKpiForm({ ...kpiForm, description: e.target.value })
-                  }
-                />
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>Target Value</Label>
-                  <Input
-                    type="number"
-                    value={kpiForm.targetValue}
-                    onChange={(e) =>
-                      setKpiForm({
-                        ...kpiForm,
-                        targetValue: Number(e.target.value),
-                      })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Unit</Label>
-                  <Input
-                    placeholder="$, users, %, etc."
-                    value={kpiForm.unit}
-                    onChange={(e) =>
-                      setKpiForm({ ...kpiForm, unit: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Timeframe (months)</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={60}
-                    value={kpiForm.timeframeMonths}
-                    onChange={(e) =>
-                      setKpiForm({
-                        ...kpiForm,
-                        timeframeMonths: Number(e.target.value),
-                      })
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>
-                  Weight (Importance): {kpiForm.weight}
-                </Label>
-                <Slider
-                  value={[kpiForm.weight]}
-                  onValueChange={([v]) =>
-                    setKpiForm({ ...kpiForm, weight: v })
-                  }
-                  min={1}
-                  max={100}
-                  step={1}
-                />
-                <p className="text-xs text-muted-foreground">
-                  How important is this KPI relative to others? Higher = more
-                  impact on equity allocation.
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Difficulty</Label>
-                <Select
-                  value={kpiForm.difficulty}
-                  onValueChange={(v) =>
-                    setKpiForm({
-                      ...kpiForm,
-                      difficulty: v as "low" | "medium" | "high" | "extreme",
-                    })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DIFFICULTIES.map((d) => (
-                      <SelectItem key={d.value} value={d.value}>
-                        {d.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* AI Suggest Button */}
-              <div className="flex items-center gap-3">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  disabled={!kpiForm.name || aiSuggesting}
-                  onClick={aiSuggestValues}
-                  className="gap-2"
-                >
-                  <Sparkles className={`h-3.5 w-3.5 ${aiSuggesting ? "animate-spin" : ""}`} />
-                  {aiSuggesting ? "AI thinking..." : "AI Suggest Target & Weight"}
-                </Button>
-                {aiReasoning && (
-                  <p className="text-xs text-muted-foreground italic flex-1">
-                    {aiReasoning}
+                  <Label>What will you deliver?</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="e.g. Get the product to A-list celebrities for brand distribution"
+                      value={kpiForm.name}
+                      onChange={(e) =>
+                        setKpiForm({ ...kpiForm, name: e.target.value })
+                      }
+                      className="flex-1"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && kpiForm.name && !aiSuggesting) {
+                          aiSuggestValues();
+                        }
+                      }}
+                    />
+                    <Button
+                      onClick={aiSuggestValues}
+                      disabled={!kpiForm.name || aiSuggesting}
+                      className="gap-2 shrink-0"
+                    >
+                      <Sparkles className={`h-4 w-4 ${aiSuggesting ? "animate-spin" : ""}`} />
+                      {aiSuggesting ? "Generating..." : "Generate with AI"}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Type your action item and hit Enter or click Generate. AI will set target, weight, difficulty, and timeframe.
                   </p>
+                </div>
+
+                {aiReasoning && (
+                  <div className="p-3 bg-purple-500/5 border border-purple-500/20 rounded-lg text-sm">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Sparkles className="h-3.5 w-3.5 text-purple-500" />
+                      <span className="font-medium text-purple-600 text-xs">AI Generated</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground italic">{aiReasoning}</p>
+                  </div>
                 )}
               </div>
 
-              {/* Deal Structure Toggle */}
-              <div className="space-y-3">
+              {/* Generated/editable fields (shown after AI generates or user expands) */}
+              {(kpiForm.targetValue > 0 && kpiForm.unit) ? (
+                <div className="space-y-4 p-4 bg-muted/30 rounded-lg border">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Generated Values (editable)</Label>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs h-6"
+                      onClick={() => setShowManualFields(!showManualFields)}
+                    >
+                      {showManualFields ? "Collapse" : "Edit details"}
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-4 gap-3 text-sm">
+                    <div className="p-2 bg-background rounded border text-center">
+                      <p className="text-xs text-muted-foreground">Target</p>
+                      <p className="font-bold font-mono">{kpiForm.targetValue.toLocaleString()}</p>
+                      <p className="text-xs text-muted-foreground">{kpiForm.unit}</p>
+                    </div>
+                    <div className="p-2 bg-background rounded border text-center">
+                      <p className="text-xs text-muted-foreground">Weight</p>
+                      <p className="font-bold font-mono">{kpiForm.weight}</p>
+                      <p className="text-xs text-muted-foreground">/ 100</p>
+                    </div>
+                    <div className="p-2 bg-background rounded border text-center">
+                      <p className="text-xs text-muted-foreground">Difficulty</p>
+                      <p className="font-bold capitalize">{kpiForm.difficulty}</p>
+                    </div>
+                    <div className="p-2 bg-background rounded border text-center">
+                      <p className="text-xs text-muted-foreground">Timeframe</p>
+                      <p className="font-bold font-mono">{kpiForm.timeframeMonths}</p>
+                      <p className="text-xs text-muted-foreground">months</p>
+                    </div>
+                  </div>
+
+                  {showManualFields && (
+                    <div className="space-y-4 pt-2">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-xs">Description</Label>
+                          <Input
+                            placeholder="What does achieving this look like?"
+                            value={kpiForm.description}
+                            onChange={(e) =>
+                              setKpiForm({ ...kpiForm, description: e.target.value })
+                            }
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs">Category</Label>
+                          <Select
+                            value={kpiForm.category}
+                            onValueChange={(v) =>
+                              setKpiForm({ ...kpiForm, category: v as KPICategory })
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {CATEGORIES.map((c) => (
+                                <SelectItem key={c.value} value={c.value}>
+                                  {c.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-xs">Target Value</Label>
+                          <Input
+                            type="number"
+                            value={kpiForm.targetValue}
+                            onChange={(e) =>
+                              setKpiForm({
+                                ...kpiForm,
+                                targetValue: Number(e.target.value),
+                              })
+                            }
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs">Unit</Label>
+                          <Input
+                            placeholder="users, deals, dollars..."
+                            value={kpiForm.unit}
+                            onChange={(e) =>
+                              setKpiForm({ ...kpiForm, unit: e.target.value })
+                            }
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs">Timeframe (months)</Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={60}
+                            value={kpiForm.timeframeMonths}
+                            onChange={(e) =>
+                              setKpiForm({
+                                ...kpiForm,
+                                timeframeMonths: Number(e.target.value),
+                              })
+                            }
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-xs">
+                          Weight (Importance): {kpiForm.weight}
+                        </Label>
+                        <Slider
+                          value={[kpiForm.weight]}
+                          onValueChange={([v]) =>
+                            setKpiForm({ ...kpiForm, weight: v })
+                          }
+                          min={1}
+                          max={100}
+                          step={1}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-xs">Difficulty</Label>
+                        <Select
+                          value={kpiForm.difficulty}
+                          onValueChange={(v) =>
+                            setKpiForm({
+                              ...kpiForm,
+                              difficulty: v as "low" | "medium" | "high" | "extreme",
+                            })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {DIFFICULTIES.map((d) => (
+                              <SelectItem key={d.value} value={d.value}>
+                                {d.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Deal Structure */}
+                      <div className="space-y-3">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs"
+                          onClick={() => setShowDealFields(!showDealFields)}
+                        >
+                          {showDealFields ? "− Hide" : "+ Edit"} Deal Structure
+                        </Button>
+
+                        {showDealFields && (
+                          <div className="p-4 bg-background rounded-lg space-y-3 border border-dashed">
+                            <div className="space-y-2">
+                              <Label className="text-xs">Deal Type</Label>
+                              <Select
+                                value={kpiForm.dealType}
+                                onValueChange={(v) =>
+                                  setKpiForm({ ...kpiForm, dealType: v as typeof kpiForm.dealType })
+                                }
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="standard">Standard KPI (no deal)</SelectItem>
+                                  <SelectItem value="equity_exchange">Equity Exchange</SelectItem>
+                                  <SelectItem value="investment">Investment</SelectItem>
+                                  <SelectItem value="revenue_share">Revenue Share</SelectItem>
+                                  <SelectItem value="flat_fee">Flat Fee</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            {kpiForm.dealType !== "standard" && (
+                              <>
+                                <div className="space-y-2">
+                                  <Label className="text-xs">They Get</Label>
+                                  <Input
+                                    placeholder="What the other party receives"
+                                    value={kpiForm.theyGet}
+                                    onChange={(e) =>
+                                      setKpiForm({ ...kpiForm, theyGet: e.target.value })
+                                    }
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label className="text-xs">We Get</Label>
+                                  <Input
+                                    placeholder="What Posthuman receives"
+                                    value={kpiForm.weGet}
+                                    onChange={(e) =>
+                                      setKpiForm({ ...kpiForm, weGet: e.target.value })
+                                    }
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label className="text-xs">Success Criteria</Label>
+                                  <Input
+                                    placeholder="How to verify achievement"
+                                    value={kpiForm.successCriteria}
+                                    onChange={(e) =>
+                                      setKpiForm({ ...kpiForm, successCriteria: e.target.value })
+                                    }
+                                  />
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <Button onClick={addKPI} className="w-full" disabled={!kpiForm.name || !kpiForm.unit || kpiForm.targetValue <= 0}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add KPI
+                  </Button>
+                  {kpiForm.name && validateKPIHardNumbers(kpiForm).length > 0 && (
+                    <div className="p-2 bg-destructive/10 border border-destructive/30 rounded text-xs space-y-1">
+                      <p className="font-medium text-destructive flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" /> Hard numbers required:
+                      </p>
+                      {validateKPIHardNumbers(kpiForm).map((issue, i) => (
+                        <p key={i} className="text-destructive/80">• {issue}</p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
                 <Button
-                  type="button"
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
                   className="text-xs"
-                  onClick={() => setShowDealFields(!showDealFields)}
+                  onClick={() => setShowManualFields(!showManualFields)}
                 >
-                  {showDealFields ? "− Hide" : "+ Add"} Deal Structure (partnerships, celeb deals, investments)
+                  {showManualFields ? "Hide" : "Or enter manually without AI"}
                 </Button>
+              )}
 
-                {showDealFields && (
-                  <div className="p-4 bg-muted/50 rounded-lg space-y-3 border border-dashed">
+              {/* Manual entry fallback (no AI) */}
+              {showManualFields && !(kpiForm.targetValue > 0 && kpiForm.unit) && (
+                <div className="space-y-4 p-4 bg-muted/30 rounded-lg border">
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Deal Type</Label>
+                      <Label className="text-xs">Description</Label>
+                      <Input
+                        placeholder="What does achieving this look like?"
+                        value={kpiForm.description}
+                        onChange={(e) =>
+                          setKpiForm({ ...kpiForm, description: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Category</Label>
                       <Select
-                        value={kpiForm.dealType}
+                        value={kpiForm.category}
                         onValueChange={(v) =>
-                          setKpiForm({ ...kpiForm, dealType: v as typeof kpiForm.dealType })
+                          setKpiForm({ ...kpiForm, category: v as KPICategory })
                         }
                       >
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="standard">Standard KPI (no deal)</SelectItem>
-                          <SelectItem value="equity_exchange">Equity Exchange (they get equity for work/promotion)</SelectItem>
-                          <SelectItem value="investment">Investment (they put money in)</SelectItem>
-                          <SelectItem value="revenue_share">Revenue Share (% of revenue)</SelectItem>
-                          <SelectItem value="flat_fee">Flat Fee (cash payment for service)</SelectItem>
+                          {CATEGORIES.map((c) => (
+                            <SelectItem key={c.value} value={c.value}>
+                              {c.label}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
-
-                    {kpiForm.dealType !== "standard" && (
-                      <>
-                        <div className="space-y-2">
-                          <Label>What They Get</Label>
-                          <Input
-                            placeholder={
-                              kpiForm.dealType === "equity_exchange"
-                                ? "e.g. 0.25% equity vested over 12 months"
-                                : kpiForm.dealType === "investment"
-                                ? "e.g. SAFE at $10M cap, pro-rata rights"
-                                : kpiForm.dealType === "revenue_share"
-                                ? "e.g. 10% of revenue from their channel for 24 months"
-                                : "e.g. $5,000 per post / $20,000 total"
-                            }
-                            value={kpiForm.theyGet}
-                            onChange={(e) =>
-                              setKpiForm({ ...kpiForm, theyGet: e.target.value })
-                            }
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>What We Get</Label>
-                          <Input
-                            placeholder={
-                              kpiForm.dealType === "equity_exchange"
-                                ? "e.g. 3 posts/month, story mentions, event appearances"
-                                : kpiForm.dealType === "investment"
-                                ? "e.g. $100K capital + intro to their network"
-                                : kpiForm.dealType === "revenue_share"
-                                ? "e.g. Exclusive distribution to their 500K audience"
-                                : "e.g. 2 YouTube videos + 4 IG stories"
-                            }
-                            value={kpiForm.weGet}
-                            onChange={(e) =>
-                              setKpiForm({ ...kpiForm, weGet: e.target.value })
-                            }
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>How Success is Measured (hard numbers only)</Label>
-                          <Input
-                            placeholder="e.g. 5,000 signups attributed via UTM link within 30 days of each post"
-                            value={kpiForm.successCriteria}
-                            onChange={(e) =>
-                              setKpiForm({ ...kpiForm, successCriteria: e.target.value })
-                            }
-                          />
-                        </div>
-                        <div className="text-xs text-muted-foreground p-2 bg-background rounded">
-                          {kpiForm.dealType === "equity_exchange" && (
-                            <p>⚡ Equity exchange comes from the bonus pool (5%). Must show measurable conversion — &quot;exposure&quot; alone is not enough.</p>
-                          )}
-                          {kpiForm.dealType === "investment" && (
-                            <p>⚡ Investment = money wired into company bank account. Verbal commitments don&apos;t count until funds clear.</p>
-                          )}
-                          {kpiForm.dealType === "revenue_share" && (
-                            <p>⚡ Revenue share must be capped (time or total $). Tracked via separate billing code or UTM attribution.</p>
-                          )}
-                          {kpiForm.dealType === "flat_fee" && (
-                            <p>⚡ Flat fee paid on delivery of agreed work product. No advance payment without signed contract + deliverable dates.</p>
-                          )}
-                        </div>
-                      </>
-                    )}
                   </div>
-                )}
-              </div>
-
-              <Button onClick={addKPI} className="w-full" disabled={!kpiForm.name || !kpiForm.unit || kpiForm.targetValue <= 0}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add KPI
-              </Button>
-              {kpiForm.name && validateKPIHardNumbers(kpiForm).length > 0 && (
-                <div className="p-2 bg-destructive/10 border border-destructive/30 rounded text-xs space-y-1">
-                  <p className="font-medium text-destructive flex items-center gap-1">
-                    <AlertTriangle className="h-3 w-3" /> Hard numbers required:
-                  </p>
-                  {validateKPIHardNumbers(kpiForm).map((issue, i) => (
-                    <p key={i} className="text-destructive/80">• {issue}</p>
-                  ))}
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs">Target Value</Label>
+                      <Input
+                        type="number"
+                        value={kpiForm.targetValue}
+                        onChange={(e) =>
+                          setKpiForm({ ...kpiForm, targetValue: Number(e.target.value) })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Unit</Label>
+                      <Input
+                        placeholder="users, deals, dollars..."
+                        value={kpiForm.unit}
+                        onChange={(e) =>
+                          setKpiForm({ ...kpiForm, unit: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Timeframe (months)</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={60}
+                        value={kpiForm.timeframeMonths}
+                        onChange={(e) =>
+                          setKpiForm({ ...kpiForm, timeframeMonths: Number(e.target.value) })
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Weight: {kpiForm.weight}</Label>
+                    <Slider
+                      value={[kpiForm.weight]}
+                      onValueChange={([v]) => setKpiForm({ ...kpiForm, weight: v })}
+                      min={1}
+                      max={100}
+                      step={1}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Difficulty</Label>
+                    <Select
+                      value={kpiForm.difficulty}
+                      onValueChange={(v) =>
+                        setKpiForm({ ...kpiForm, difficulty: v as "low" | "medium" | "high" | "extreme" })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DIFFICULTIES.map((d) => (
+                          <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button onClick={addKPI} className="w-full" disabled={!kpiForm.name || !kpiForm.unit || kpiForm.targetValue <= 0}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add KPI
+                  </Button>
                 </div>
               )}
             </CardContent>
