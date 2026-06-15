@@ -300,34 +300,35 @@ export function Accountability({ founders, setFounders }: AccountabilityProps) {
           <div className="p-3 bg-muted rounded-lg text-xs space-y-1">
             <p className="font-medium">Pre-defined Bonus Milestones:</p>
             <div className="mt-2 space-y-2">
-              <div className="p-2 bg-background rounded border">
-                <p className="font-medium text-sm">Celebrity Brand Distribution</p>
+              <div className="p-2 bg-background rounded border border-blue-500/30">
+                <p className="font-medium text-sm">Celebrity Brand Distribution → <span className="text-blue-500">EQUITY LOCK-IN</span></p>
                 <p className="text-muted-foreground">Getting a major celebrity involved for brand distribution that <span className="font-medium text-foreground">actually converts</span>.</p>
-                <p className="mt-1">• 1 major celebrity partnership signed + traceable conversions → <span className="font-bold">2.5%</span></p>
-                <p>• Celebrity also invests in the company → <span className="font-bold">+2.5% additional</span></p>
+                <p className="mt-1">• 1 major celebrity partnership signed + traceable conversions → <span className="font-bold text-blue-500">locks 50% of your equity permanently</span></p>
+                <p>• Celebrity also invests in the company → <span className="font-bold text-blue-500">locks remaining 50% (all equity locked)</span></p>
                 <p className="mt-1 text-muted-foreground italic">Measured by: signed contract + UTM-tracked signups/purchases attributed to that celebrity. &quot;Interest&quot; or DMs do not count. Investment = wire received in company bank account.</p>
+                <p className="mt-1 text-xs text-blue-500">This does NOT come from the bonus pool. It permanently protects the founder&apos;s existing equity from clawback.</p>
               </div>
               <div className="p-2 bg-background rounded border">
                 <p className="font-medium text-sm">Investor That Moved the Needle</p>
                 <p className="text-muted-foreground">Bringing in an investor whose money/involvement materially changed the company trajectory.</p>
-                <p className="mt-1">• Intro that leads to signed + funded SAFE/round → 0.5%</p>
-                <p>• Lead investor for seed round ($500K+) → 1.0%</p>
-                <p>• Strategic investor (opens doors: YC, major partner, distribution) → 0.75%</p>
+                <p className="mt-1">• Intro that leads to signed + funded SAFE/round → 1.0%</p>
+                <p>• Lead investor for seed round ($500K+) → 2.0%</p>
+                <p>• Strategic investor (opens doors: YC, major partner, distribution) → 1.5%</p>
                 <p className="mt-1 text-muted-foreground italic">Measured by: wire received in company bank account. &quot;Committed&quot; = money in, not verbal interest. The person who made the intro AND shepherded the close gets credit.</p>
               </div>
               <div className="p-2 bg-background rounded border">
                 <p className="font-medium text-sm">User Growth (Above Plan)</p>
                 <p className="text-muted-foreground">Driving user numbers significantly above the agreed target.</p>
-                <p className="mt-1">• 2x target users/month sustained for 60 days → 0.5%</p>
-                <p>• 5x target (viral event / breakout) → 1.0%</p>
+                <p className="mt-1">• 2x target users/month sustained for 60 days → 1.0%</p>
+                <p>• 5x target (viral event / breakout) → 2.0%</p>
                 <p className="mt-1 text-muted-foreground italic">Measured by: billing system active user count (not downloads, not signups — active users who completed onboarding). Sustained = 60+ consecutive days.</p>
               </div>
               <div className="p-2 bg-background rounded border">
                 <p className="font-medium text-sm">Revenue Milestones</p>
                 <p className="text-muted-foreground">Revenue achievements outside normal responsibilities.</p>
-                <p className="mt-1">• First $10K MRR → 0.25% (split among drivers)</p>
-                <p>• First $50K MRR → 0.5% (split among drivers)</p>
-                <p>• Peptide deal closed + funded → 0.5%</p>
+                <p className="mt-1">• First $10K MRR → 0.5% (split among drivers)</p>
+                <p>• First $50K MRR → 1.0% (split among drivers)</p>
+                <p>• First $100K MRR → 1.5% (split among drivers)</p>
                 <p className="mt-1 text-muted-foreground italic">Measured by: Stripe/bank revenue, not projections or LOIs.</p>
               </div>
             </div>
