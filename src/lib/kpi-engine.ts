@@ -129,19 +129,19 @@ export const FounderSchema = z.object({
 export type Founder = z.infer<typeof FounderSchema>;
 
 // --- Value multipliers ---
-// Adjusted for 2026 reality: AI (Claude, etc.) can build software,
-// so pure technical/product execution is less scarce. Human-only skills
-// (relationships, capital, strategy, leadership) are MORE valuable.
+// All categories weighted equally — the team decides what's valuable,
+// not the algorithm. Equity is determined purely by KPI weight, difficulty,
+// target scale, and timeframe.
 
 const CATEGORY_VALUE_MULTIPLIERS: Record<KPICategory, number> = {
-  revenue: 1.6,        // deals, sales, partnerships — requires humans
-  fundraising: 1.5,    // investor relationships — pure human skill
-  leadership: 1.3,     // strategy, decision-making, team alignment
-  marketing: 1.2,      // brand, growth, creative direction
-  product: 1.1,        // product STRATEGY still matters, but building is easier
-  operations: 1.0,     // process, hiring, coordination
-  technical: 0.9,      // code/architecture — AI can do most of this now
-  culture: 0.85,       // important but least directly tied to value
+  revenue: 1.0,
+  fundraising: 1.0,
+  leadership: 1.0,
+  marketing: 1.0,
+  product: 1.0,
+  operations: 1.0,
+  technical: 1.0,
+  culture: 1.0,
 };
 
 const DIFFICULTY_MULTIPLIERS: Record<string, number> = {
@@ -153,21 +153,20 @@ const DIFFICULTY_MULTIPLIERS: Record<string, number> = {
 
 /**
  * Contribution type weights.
- * Adjusted for AI era: code/technical builds are less scarce since AI can write code.
- * Human-only skills (revenue, capital, recruiting, network) are relatively more valuable.
- * Strategic execution (closing deals, hiring, fundraising) outweighs building features.
+ * All contribution types weighted equally — what matters is the
+ * hours invested and dollar value, not the type of work.
  */
 const CONTRIBUTION_TYPE_WEIGHTS: Record<ContributionType, number> = {
-  revenue_generated: 1.0,    // hardest to replicate with AI
-  execution: 0.95,           // general business execution
-  capital_invested: 0.9,     // money in = skin in the game
-  team_recruited: 0.85,      // hiring is a human skill
-  network_connections: 0.8,  // relationships can't be AI-generated
-  domain_expertise: 0.75,    // knowing the space deeply
-  ip_created: 0.7,           // patents, proprietary research
-  technical_build: 0.6,      // code — AI can write most of this now
-  market_research: 0.5,      // AI can assist heavily here too
-  idea_vision: 0.3,          // ideas remain cheap without execution
+  revenue_generated: 1.0,
+  execution: 1.0,
+  capital_invested: 1.0,
+  team_recruited: 1.0,
+  network_connections: 1.0,
+  domain_expertise: 1.0,
+  ip_created: 1.0,
+  technical_build: 1.0,
+  market_research: 1.0,
+  idea_vision: 0.3,          // ideas without execution are still worth less
 };
 
 const TIMEFRAME_DECAY = 0.85;
@@ -197,13 +196,8 @@ export function contributionToValue(contribution: Contribution): number {
 
 /**
  * Calculates the total prior contribution value for a founder.
- * Experience is weighted as a meaningful multiplier, not just a tiny addon.
- *
- * Formula: (baseContributions + experienceBase) × experienceMultiplier
- *
- * experienceBase = log2(years+1) × 15  — standalone credit for domain expertise
- * experienceMultiplier = 1 + (min(years, 20) / 40) — up to 1.5x for 20+ years
- *   This means a 10yr veteran gets 1.25x on their contributions vs a 0yr founder.
+ * Based purely on documented contributions (hours invested × dollar value).
+ * No experience multiplier — judge by what you've done, not your resume years.
  */
 export function founderContributionValue(founder: Founder): number {
   const contributions = founder.contributions || [];
@@ -212,11 +206,7 @@ export function founderContributionValue(founder: Founder): number {
     0
   );
 
-  const years = founder.yearsExperience || 0;
-  const experienceBase = Math.log2(Math.max(years, 1) + 1) * 15;
-  const experienceMultiplier = 1 + Math.min(years, 20) / 40;
-
-  return (baseContributions + experienceBase) * experienceMultiplier;
+  return baseContributions;
 }
 
 /**
@@ -233,31 +223,14 @@ export function founderContributionValue(founder: Founder): number {
 const FUTURE_WEIGHT = 0.7;
 const PRIOR_WEIGHT = 0.3;
 
-// Posthuman Inc. mission: AI smart devices that track health and help people.
-// Skills directly relevant to this mission get extra weight.
-const MISSION_KEYWORDS = [
-  "health", "medical", "clinical", "hipaa", "fda", "device",
-  "iot", "hardware", "sensor", "ai", "ml", "machine learning",
-  "security", "cybersecurity", "pen test", "data pipeline",
-  "cloud", "interoperability", "hl7", "snomed", "loinc",
-  "firmware", "embedded", "wearable", "biotech", "peptide",
-];
-
 export function skillsMultiplier(founder: Founder): number {
   const skills = founder.relevantSkills || [];
   const count = skills.length;
   if (count === 0) return 1.0;
 
-  // Count how many skills are mission-aligned
-  const missionAligned = skills.filter((s) =>
-    MISSION_KEYWORDS.some((kw) => s.toLowerCase().includes(kw))
-  ).length;
-
-  // Base: 1 + count * 0.02 (up to 1.3x for 15+ skills)
-  // Mission bonus: extra 0.03 per aligned skill (up to +0.3x for 10 aligned)
-  const baseMult = 1 + Math.min(count, 15) * 0.02;
-  const missionBonus = Math.min(missionAligned, 10) * 0.03;
-  return baseMult + missionBonus;
+  // Small bonus for documented skills (signals domain expertise)
+  // 1.0 to 1.15 max — not enough to distort, just a credibility signal
+  return 1 + Math.min(count, 15) * 0.01;
 }
 
 export function founderEnterpriseValue(founder: Founder): number {
@@ -268,15 +241,7 @@ export function founderEnterpriseValue(founder: Founder): number {
   const contributionScore = founderContributionValue(founder);
   const skillsMult = skillsMultiplier(founder);
 
-  // Hours adjustment: part-time founders' KPI scores are discounted
-  // because they have less time to deliver on promises.
-  // Formula: sqrt(hours/40) — gentler than linear to not completely zero out part-timers.
-  // 40h = 1.0×, 20h = 0.71×, 16h = 0.63×, 10h = 0.5×, 5h = 0.35×
-  const hours = founder.hoursPerWeek || 40;
-  const hoursAdjustment = Math.sqrt(Math.min(hours, 40) / 40);
-
-  // Hours adjustment applies to KPI score (promises) but NOT contribution score (past work already done)
-  return (kpiScore * FUTURE_WEIGHT * hoursAdjustment + contributionScore * PRIOR_WEIGHT) * skillsMult;
+  return (kpiScore * FUTURE_WEIGHT + contributionScore * PRIOR_WEIGHT) * skillsMult;
 }
 
 /**

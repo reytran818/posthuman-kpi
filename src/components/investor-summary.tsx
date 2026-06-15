@@ -288,9 +288,10 @@ export function InvestorSummary({ founders }: InvestorSummaryProps) {
         <div className="flex items-center gap-4">
           <Clock className="h-3.5 w-3.5 shrink-0" />
           <p>
-            Equity allocation computed algorithmically using KPI enterprise value scoring,
-            weighted by category (revenue 1.6×, technical 0.9×), difficulty, hours commitment
-            (√(h/40) adjustment), experience multiplier, and mission-aligned skills.
+            Equity allocation computed algorithmically using KPI enterprise value scoring.
+            All work categories weighted equally (1.0×). Score = weight × difficulty × time decay × log(target).
+            70% future KPIs + 30% documented past contributions.
+            No hours penalty, no experience boost, no category bias.
             10% employee option pool reserved. Full methodology available in Disclosure tab.
           </p>
         </div>

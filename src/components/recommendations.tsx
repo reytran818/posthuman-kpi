@@ -84,12 +84,6 @@ export function Recommendations({ founders }: RecommendationsProps) {
     }
 
     const techKpis = f.kpis.filter((k) => k.category === "technical").length;
-    if (techKpis > f.kpis.length * 0.6 && f.kpis.length >= 3) {
-      recs.push({
-        priority: "medium",
-        text: `${Math.round((techKpis / f.kpis.length) * 100)}% of KPIs are technical. In the AI era, diversify into revenue, product, or leadership KPIs for higher valuation.`,
-      });
-    }
 
     if (skills.length < 5) {
       recs.push({
@@ -127,16 +121,6 @@ export function Recommendations({ founders }: RecommendationsProps) {
       recs.push({
         priority: "medium",
         text: `No prior contributions recorded. Documenting past work (even small) adds 30% weight to your score.`,
-      });
-    }
-
-    const noRevenueKpis = !f.kpis.some(
-      (k) => k.category === "revenue" || k.category === "fundraising"
-    );
-    if (noRevenueKpis && f.kpis.length >= 3 && (f.requestedEquity || 0) >= 15) {
-      recs.push({
-        priority: "medium",
-        text: `No revenue/fundraising KPIs. Adding a financial outcome KPI significantly boosts valuation (revenue category has 1.6× multiplier).`,
       });
     }
 
@@ -647,13 +631,13 @@ export function Recommendations({ founders }: RecommendationsProps) {
           <Separator />
 
           <div className="text-sm text-muted-foreground">
-            <p className="font-medium mb-1">Key Multipliers (use in negotiation):</p>
+            <p className="font-medium mb-1">How the algorithm works (neutral):</p>
             <ul className="space-y-1 ml-4 list-disc">
-              <li>Revenue/Fundraising KPIs = <strong>1.6×</strong> category multiplier</li>
-              <li>Technical KPIs = <strong>0.9×</strong> (AI commoditization discount)</li>
-              <li>Full-time (40h) = <strong>1.0×</strong> hours multiplier vs part-time discount</li>
-              <li>Mission-aligned skills (AI, health, devices) = extra <strong>0.03×</strong> each</li>
-              <li>Experience = up to <strong>1.5×</strong> for 20+ years</li>
+              <li>All KPI categories weighted <strong>equally</strong> (1.0×)</li>
+              <li>Score = weight × difficulty × time decay × log(target)</li>
+              <li>70% future KPIs + 30% documented past contributions</li>
+              <li>No hours penalty, no experience boost, no category bias</li>
+              <li>Equity = your score ÷ total team score × 90% founder pool</li>
             </ul>
           </div>
         </CardContent>
