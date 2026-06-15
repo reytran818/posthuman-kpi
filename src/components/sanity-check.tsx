@@ -177,6 +177,110 @@ export function SanityCheck({ founders }: SanityCheckProps) {
       checks.push({ label: "Skills Overlap", severity: "pass", detail: overlaps.length > 0 ? `${overlaps.length} shared skill(s) — minimal overlap` : "No skill overlap detected" });
     }
 
+    // ═══ MATH VALIDATION ═══
+
+    // 13. Total equity must = 100%
+    const calculatedTotal = split.reduce((s, x) => s + x.equityPercent, 0) + EMPLOYEE_OPTION_POOL;
+    if (Math.abs(calculatedTotal - 100) > 0.01) {
+      checks.push({ label: "Math: Total = 100%", severity: "fail", detail: `Calculated equity totals ${calculatedTotal.toFixed(2)}% — should be exactly 100%. Algorithm error.` });
+    } else {
+      checks.push({ label: "Math: Total = 100%", severity: "pass", detail: `Founder pool (${(calculatedTotal - EMPLOYEE_OPTION_POOL).toFixed(1)}%) + ESOP (${EMPLOYEE_OPTION_POOL}%) = ${calculatedTotal.toFixed(1)}%` });
+    }
+
+    // 14. No negative equity
+    const negativeEquity = split.filter((s) => s.equityPercent < 0);
+    if (negativeEquity.length > 0) {
+      checks.push({ label: "Math: No Negative Equity", severity: "fail", detail: `${negativeEquity.map(s => s.founderName).join(", ")} have negative calculated equity — algorithm error` });
+    } else {
+      checks.push({ label: "Math: No Negative Equity", severity: "pass", detail: "All founders have non-negative equity" });
+    }
+
+    // 15. No founder exceeds pool cap
+    const overCap = split.filter((s) => s.equityPercent > founderPool);
+    if (overCap.length > 0) {
+      checks.push({ label: "Math: No Single Founder > Pool", severity: "fail", detail: `${overCap.map(s => `${s.founderName} (${s.equityPercent.toFixed(1)}%)`).join(", ")} exceeds the ${founderPool}% pool` });
+    } else {
+      checks.push({ label: "Math: No Single Founder > Pool", severity: "pass", detail: `No founder exceeds ${founderPool}% cap` });
+    }
+
+    // 16. KPI weights per founder (should be reasonable, flag if total > 500 or any single > 100)
+    for (const f of founders) {
+      const totalWeight = f.kpis.reduce((s, k) => s + k.weight, 0);
+      const maxWeight = f.kpis.reduce((m, k) => Math.max(m, k.weight), 0);
+      if (maxWeight > 100) {
+        checks.push({ label: `Math: ${f.name} KPI Weight`, severity: "fail", detail: `Has a KPI with weight ${maxWeight} — max allowed is 100` });
+      } else if (totalWeight > 500 && f.kpis.length > 3) {
+        checks.push({ label: `Math: ${f.name} KPI Weight`, severity: "warn", detail: `Total KPI weights = ${totalWeight} across ${f.kpis.length} KPIs — very high, may inflate their score disproportionately` });
+      } else if (f.kpis.length > 0) {
+        checks.push({ label: `Math: ${f.name} KPI Weight`, severity: "pass", detail: `Total weights: ${totalWeight} across ${f.kpis.length} KPIs (avg: ${(totalWeight / f.kpis.length).toFixed(0)})` });
+      }
+    }
+
+    // 17. KPI target values must be positive
+    for (const f of founders) {
+      const zeroTargets = f.kpis.filter((k) => k.targetValue <= 0);
+      if (zeroTargets.length > 0) {
+        checks.push({ label: `Math: ${f.name} Target Values`, severity: "fail", detail: `${zeroTargets.length} KPI(s) have target ≤ 0: ${zeroTargets.map(k => k.name).join(", ")}` });
+      }
+    }
+
+    // 18. Timeframes must be valid (1-60 months)
+    for (const f of founders) {
+      const badTime = f.kpis.filter((k) => k.timeframeMonths < 1 || k.timeframeMonths > 60);
+      if (badTime.length > 0) {
+        checks.push({ label: `Math: ${f.name} Timeframes`, severity: "fail", detail: `${badTime.length} KPI(s) have invalid timeframes: ${badTime.map(k => `${k.name} (${k.timeframeMonths}mo)`).join(", ")}` });
+      }
+    }
+
+    // 19. Contribution values must be non-negative
+    for (const f of founders) {
+      const badContribs = (f.contributions || []).filter((c) => c.estimatedValue < 0 || c.hoursInvested < 0);
+      if (badContribs.length > 0) {
+        checks.push({ label: `Math: ${f.name} Contributions`, severity: "fail", detail: `${badContribs.length} contribution(s) have negative values — fix estimated value or hours` });
+      }
+    }
+
+    // 20. Requested equity per founder should be 0-50% (flag outliers)
+    for (const f of founders) {
+      const req = f.requestedEquity || 0;
+      if (req > 50) {
+        checks.push({ label: `Math: ${f.name} Request`, severity: "fail", detail: `Requesting ${req}% — no single founder should get >50% in a multi-founder startup` });
+      } else if (req === 0 && f.kpis.length > 0) {
+        checks.push({ label: `Math: ${f.name} Request`, severity: "warn", detail: `Has KPIs defined but requesting 0% equity — is this intentional?` });
+      }
+    }
+
+    // 21. Bonus pool + locked equity shouldn't make total > 100%
+    const totalLocked = founders.reduce((s, f) => s + (f.lockedEquity || 0), 0);
+    const totalBonus = founders.reduce((s, f) => s + (f.bonusEquityEarned || 0), 0);
+    const grandTotal = totalRequested + EMPLOYEE_OPTION_POOL + totalBonus;
+    if (grandTotal > 100) {
+      checks.push({ label: "Math: Grand Total ≤ 100%", severity: "fail", detail: `Requested (${totalRequested}%) + ESOP (${EMPLOYEE_OPTION_POOL}%) + Bonus awarded (${totalBonus}%) = ${grandTotal}% — exceeds 100%` });
+    } else {
+      checks.push({ label: "Math: Grand Total ≤ 100%", severity: "pass", detail: `Requested (${totalRequested}%) + ESOP (${EMPLOYEE_OPTION_POOL}%) + Bonus (${totalBonus}%) = ${grandTotal}% — within bounds` });
+    }
+    if (totalLocked > 0) {
+      checks.push({ label: "Math: Locked Equity", severity: "pass", detail: `${totalLocked.toFixed(1)}% total locked across founders — this equity is permanently protected` });
+    }
+
+    // 22. Hours × equity ratio fairness (cost-per-percent)
+    const hourEquityRatios = founders
+      .filter((f) => (f.hoursPerWeek || 0) > 0 && (f.requestedEquity || 0) > 0)
+      .map((f) => ({ name: f.name, ratio: (f.hoursPerWeek || 0) / (f.requestedEquity || 1) }));
+    if (hourEquityRatios.length >= 2) {
+      const maxRatio = Math.max(...hourEquityRatios.map((r) => r.ratio));
+      const minRatio = Math.min(...hourEquityRatios.map((r) => r.ratio));
+      if (maxRatio / minRatio > 5) {
+        const cheap = hourEquityRatios.find((r) => r.ratio === minRatio)!;
+        const expensive = hourEquityRatios.find((r) => r.ratio === maxRatio)!;
+        checks.push({ label: "Math: Hours/Equity Ratio", severity: "fail", detail: `${expensive.name} works ${expensive.ratio.toFixed(1)}h per 1% vs ${cheap.name} at ${cheap.ratio.toFixed(1)}h per 1% — ${(maxRatio/minRatio).toFixed(1)}× difference is unfair` });
+      } else if (maxRatio / minRatio > 3) {
+        checks.push({ label: "Math: Hours/Equity Ratio", severity: "warn", detail: `Hours-per-percent varies ${(maxRatio/minRatio).toFixed(1)}× between founders — consider adjusting` });
+      } else {
+        checks.push({ label: "Math: Hours/Equity Ratio", severity: "pass", detail: `Hours-per-percent ratio is within ${(maxRatio/minRatio).toFixed(1)}× — reasonably balanced` });
+      }
+    }
+
     const passes = checks.filter((c) => c.severity === "pass").length;
     const warns = checks.filter((c) => c.severity === "warn").length;
     const fails = checks.filter((c) => c.severity === "fail").length;
@@ -242,6 +346,57 @@ export function SanityCheck({ founders }: SanityCheckProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Math Summary — always visible */}
+      {(() => {
+        const mathChecks = checks.filter((c) => c.label.startsWith("Math:"));
+        const mathFails = mathChecks.filter((c) => c.severity === "fail");
+        const mathWarns = mathChecks.filter((c) => c.severity === "warn");
+        if (mathFails.length > 0 || mathWarns.length > 0) {
+          return (
+            <Card className={mathFails.length > 0 ? "border-destructive" : "border-yellow-500"}>
+              <CardContent className="pt-4">
+                <div className="flex items-center gap-2 mb-3">
+                  {mathFails.length > 0 ? (
+                    <XCircle className="h-5 w-5 text-destructive" />
+                  ) : (
+                    <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                  )}
+                  <p className="font-bold text-sm">
+                    {mathFails.length > 0
+                      ? `⚠ ${mathFails.length} Math Error(s) — Numbers Don't Add Up`
+                      : `${mathWarns.length} Math Warning(s) — Review Needed`}
+                  </p>
+                </div>
+                <div className="space-y-1.5">
+                  {[...mathFails, ...mathWarns].map((c, i) => (
+                    <div key={i} className={`flex items-start gap-2 p-1.5 rounded text-xs ${c.severity === "fail" ? "bg-destructive/10" : "bg-yellow-500/10"}`}>
+                      {c.severity === "fail" ? <XCircle className="h-3.5 w-3.5 text-destructive mt-0.5 shrink-0" /> : <AlertTriangle className="h-3.5 w-3.5 text-yellow-500 mt-0.5 shrink-0" />}
+                      <div>
+                        <span className="font-medium">{c.label.replace("Math: ", "")}:</span>{" "}
+                        <span className="text-muted-foreground">{c.detail}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        }
+        return (
+          <Card className="border-green-500/50">
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-green-500" />
+                <p className="font-bold text-sm text-green-600">All Math Checks Pass — Numbers Add Up</p>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Total = 100% • No negative equity • All targets positive • Weights valid • Hours/equity ratio balanced
+              </p>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Equity Comparison Table */}
       <Card>
