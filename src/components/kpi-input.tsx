@@ -89,6 +89,7 @@ export function KPIInput({ founders, setFounders, onComplete }: KPIInputProps) {
   const [aiSuggesting, setAiSuggesting] = useState(false);
   const [aiReasoning, setAiReasoning] = useState("");
   const [showManualFields, setShowManualFields] = useState(false);
+  const [bulkRegenerating, setBulkRegenerating] = useState(false);
   const [kpiForm, setKpiForm] = useState({
     name: "",
     description: "",
@@ -254,6 +255,27 @@ export function KPIInput({ founders, setFounders, onComplete }: KPIInputProps) {
 
   const hasAnyKPIs = founders.some((f) => f.kpis.length > 0);
 
+  async function bulkRegenerate() {
+    if (!hasAnyKPIs) return;
+    if (!confirm("This will regenerate ALL KPIs for ALL founders with AI-calculated hard numbers. Existing values will be replaced. Continue?")) return;
+    setBulkRegenerating(true);
+    try {
+      const res = await fetch("/api/regenerate-kpis", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ founders }),
+      });
+      if (res.ok) {
+        const { founders: updated } = await res.json();
+        setFounders(updated);
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setBulkRegenerating(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between">
@@ -269,14 +291,27 @@ export function KPIInput({ founders, setFounders, onComplete }: KPIInputProps) {
             All KPIs must have hard numbers — no placeholders, no vague language, no &quot;try to.&quot;
           </p>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => setShowChat(!showChat)}
-          className="gap-2"
-        >
-          <Sparkles className="h-4 w-4" />
-          {showChat ? "Hide" : "AI"} Assistant
-        </Button>
+        <div className="flex gap-2">
+          {hasAnyKPIs && (
+            <Button
+              variant="secondary"
+              onClick={bulkRegenerate}
+              disabled={bulkRegenerating}
+              className="gap-2"
+            >
+              <Sparkles className={`h-4 w-4 ${bulkRegenerating ? "animate-spin" : ""}`} />
+              {bulkRegenerating ? "Regenerating all..." : "Regenerate All KPIs with AI"}
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            onClick={() => setShowChat(!showChat)}
+            className="gap-2"
+          >
+            <Sparkles className="h-4 w-4" />
+            {showChat ? "Hide" : "AI"} Assistant
+          </Button>
+        </div>
       </div>
 
       <div className={`grid gap-6 ${showChat ? "grid-cols-2" : "grid-cols-1"}`}>
