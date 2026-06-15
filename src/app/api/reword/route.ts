@@ -25,6 +25,11 @@ Original text:
 "${text}"
 
 Return ONLY the rewritten single sentence, nothing else.`,
+    estimate_value: `Estimate the dollar value of this startup contribution. Consider what it would cost to hire someone or pay a contractor to do this work, or the direct business value created.
+
+Contribution: "${text}"
+
+Return ONLY a single number in dollars (no $ sign, no commas, no explanation). Just the number. For example: 15000`,
   };
 
   const prompt = prompts[type] || prompts.contribution;

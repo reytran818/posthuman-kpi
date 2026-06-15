@@ -66,6 +66,7 @@ export function FounderSetup({
   const [newSkill, setNewSkill] = useState("");
   const [rewordingResume, setRewordingResume] = useState<string | null>(null);
   const [rewordingContrib, setRewordingContrib] = useState(false);
+  const [estimatingValue, setEstimatingValue] = useState(false);
 
   // Contribution form
   const [contribForm, setContribForm] = useState({
@@ -173,6 +174,41 @@ export function FounderSetup({
       }
     } catch { /* silent */ }
     finally { setRewordingContrib(false); }
+  }
+
+  async function aiEstimateValue() {
+    if (!contribForm.description) return;
+    setEstimatingValue(true);
+    try {
+      const res = await fetch("/api/reword", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: `Type: ${contribForm.type}. Description: ${contribForm.description}. Hours: ${contribForm.hoursInvested || "unknown"}`,
+          type: "estimate_value",
+          founderName: "",
+          role: "",
+        }),
+      });
+      if (res.ok && res.body) {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let result = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          result += decoder.decode(value, { stream: true });
+        }
+        const numberMatch = result.match(/\d[\d,]*/);
+        if (numberMatch) {
+          const value = parseInt(numberMatch[0].replace(/,/g, ""), 10);
+          if (value > 0) {
+            setContribForm((prev) => ({ ...prev, estimatedValue: value }));
+          }
+        }
+      }
+    } catch { /* silent */ }
+    finally { setEstimatingValue(false); }
   }
 
   function addSkill(founderId: string) {
@@ -547,7 +583,19 @@ export function FounderSetup({
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <Label>Estimated Value ($)</Label>
+                            <div className="flex items-center justify-between">
+                              <Label>Estimated Value ($)</Label>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 text-xs gap-1 px-2"
+                                disabled={!contribForm.description || estimatingValue}
+                                onClick={aiEstimateValue}
+                              >
+                                <Sparkles className={`h-3 w-3 ${estimatingValue ? "animate-spin" : ""}`} />
+                                {estimatingValue ? "..." : "AI Estimate"}
+                              </Button>
+                            </div>
                             <Input
                               type="number"
                               min={0}
