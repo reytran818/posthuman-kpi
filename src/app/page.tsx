@@ -9,8 +9,9 @@ import { LegalFramework } from "@/components/legal-framework";
 import { TransparencyDisclosure } from "@/components/transparency-disclosure";
 import { Operations } from "@/components/operations";
 import { Accountability } from "@/components/accountability";
+import { SanityCheck } from "@/components/sanity-check";
 import { useSharedFounders } from "@/hooks/use-shared-founders";
-import { Users, Target, BarChart3, RotateCcw, Cloud, Shield, Eye, Save, Wrench, RefreshCw, Scale } from "lucide-react";
+import { Users, Target, BarChart3, RotateCcw, Cloud, Shield, Eye, Save, Wrench, RefreshCw, Scale, ClipboardCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function Home() {
@@ -87,7 +88,7 @@ export default function Home() {
 
       <div className="mx-auto max-w-6xl px-6 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="founders" className="gap-2">
               <Users className="h-4 w-4" />
               Founders
@@ -107,6 +108,14 @@ export default function Home() {
             >
               <BarChart3 className="h-4 w-4" />
               Results
+            </TabsTrigger>
+            <TabsTrigger
+              value="sanity"
+              className="gap-2"
+              disabled={founders.every((f) => f.kpis.length === 0)}
+            >
+              <ClipboardCheck className="h-4 w-4" />
+              Sanity
             </TabsTrigger>
             <TabsTrigger
               value="equity"
@@ -156,6 +165,10 @@ export default function Home() {
 
           <TabsContent value="results" className="mt-6">
             <ResultsDashboard founders={founders} />
+          </TabsContent>
+
+          <TabsContent value="sanity" className="mt-6">
+            <SanityCheck founders={founders} />
           </TabsContent>
 
           <TabsContent value="equity" className="mt-6">
