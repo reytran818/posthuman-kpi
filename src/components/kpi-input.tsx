@@ -24,7 +24,7 @@ import { Separator } from "@/components/ui/separator";
 import type { Founder, KPI, KPICategory } from "@/lib/kpi-engine";
 import { kpiToEnterpriseValue } from "@/lib/kpi-engine";
 import { AIChat } from "@/components/ai-chat";
-import { Plus, Trash2, ArrowRight, Sparkles, Target, AlertTriangle, Pencil, Check, X } from "lucide-react";
+import { Plus, Trash2, ArrowRight, Sparkles, Target, AlertTriangle, Check, X } from "lucide-react";
 
 interface KPIInputProps {
   founders: Founder[];
@@ -219,6 +219,16 @@ export function KPIInput({ founders, setFounders, onComplete }: KPIInputProps) {
       founders.map((f) =>
         f.id === founderId
           ? { ...f, kpis: f.kpis.map((k) => k.id === kpiId ? { ...k, status } : k) }
+          : f
+      )
+    );
+  }
+
+  function updateKPIField(founderId: string, kpiId: string, field: string, value: string | number) {
+    setFounders(
+      founders.map((f) =>
+        f.id === founderId
+          ? { ...f, kpis: f.kpis.map((k) => k.id === kpiId ? { ...k, [field]: value } : k) }
           : f
       )
     );
@@ -909,20 +919,33 @@ export function KPIInput({ founders, setFounders, onComplete }: KPIInputProps) {
                 return (
                 <Card key={kpi.id} className={`${issues.length > 0 ? "border-orange-500/50" : ""} ${kpi.status === "completed" ? "border-green-500/30 bg-green-500/5" : kpi.status === "missed" ? "border-destructive/30 bg-destructive/5" : ""}`}>
                   <CardContent className="py-4">
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="space-y-2 flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-medium">{kpi.name}</p>
-                          <Badge variant="outline">{kpi.category}</Badge>
-                          <Badge
-                            variant={
-                              kpi.difficulty === "extreme"
-                                ? "destructive"
-                                : "secondary"
-                            }
+                          <Input
+                            className="h-7 text-sm font-medium w-48"
+                            value={kpi.name}
+                            onChange={(e) => updateKPIField(activeFounder.id, kpi.id, "name", e.target.value)}
+                          />
+                          <select
+                            className="h-7 rounded border border-input bg-background px-2 text-xs"
+                            value={kpi.category}
+                            onChange={(e) => updateKPIField(activeFounder.id, kpi.id, "category", e.target.value)}
                           >
-                            {kpi.difficulty}
-                          </Badge>
+                            {CATEGORIES.map((c) => (
+                              <option key={c.value} value={c.value}>{c.label}</option>
+                            ))}
+                          </select>
+                          <select
+                            className="h-7 rounded border border-input bg-background px-2 text-xs"
+                            value={kpi.difficulty}
+                            onChange={(e) => updateKPIField(activeFounder.id, kpi.id, "difficulty", e.target.value)}
+                          >
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                            <option value="extreme">Extreme</option>
+                          </select>
                           <Badge
                             className={`text-xs ${
                               kpi.status === "completed"
@@ -943,23 +966,78 @@ export function KPIInput({ founders, setFounders, onComplete }: KPIInputProps) {
                             </Badge>
                           )}
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                          Target: {kpi.targetValue} {kpi.unit} in{" "}
-                          {kpi.timeframeMonths} months • Weight: {kpi.weight}
-                        </p>
-                        {kpi.description && (
-                          <p className="text-xs text-muted-foreground">{kpi.description}</p>
-                        )}
+
+                        <div className="flex items-center gap-2 flex-wrap text-xs">
+                          <span className="text-muted-foreground">Target:</span>
+                          <Input
+                            type="number"
+                            className="h-6 w-20 text-xs font-mono p-1"
+                            value={kpi.targetValue}
+                            onChange={(e) => updateKPIField(activeFounder.id, kpi.id, "targetValue", Number(e.target.value))}
+                          />
+                          <Input
+                            className="h-6 w-32 text-xs p-1"
+                            value={kpi.unit}
+                            onChange={(e) => updateKPIField(activeFounder.id, kpi.id, "unit", e.target.value)}
+                          />
+                          <span className="text-muted-foreground">in</span>
+                          <Input
+                            type="number"
+                            className="h-6 w-12 text-xs font-mono p-1"
+                            min={1}
+                            max={60}
+                            value={kpi.timeframeMonths}
+                            onChange={(e) => updateKPIField(activeFounder.id, kpi.id, "timeframeMonths", Number(e.target.value))}
+                          />
+                          <span className="text-muted-foreground">months • Weight:</span>
+                          <Input
+                            type="number"
+                            className="h-6 w-14 text-xs font-mono p-1"
+                            min={1}
+                            max={100}
+                            value={kpi.weight}
+                            onChange={(e) => updateKPIField(activeFounder.id, kpi.id, "weight", Number(e.target.value))}
+                          />
+                        </div>
+
+                        <Input
+                          className="h-6 text-xs p-1 text-muted-foreground"
+                          placeholder="Description..."
+                          value={kpi.description}
+                          onChange={(e) => updateKPIField(activeFounder.id, kpi.id, "description", e.target.value)}
+                        />
+
                         {kpi.dealType && kpi.dealType !== "standard" && (
-                          <div className="mt-1 p-2 bg-muted rounded text-xs space-y-0.5">
+                          <div className="mt-1 p-2 bg-muted rounded text-xs space-y-1">
                             <Badge className="text-xs mb-1" variant="outline">
                               {kpi.dealType === "equity_exchange" ? "Equity Exchange" :
                                kpi.dealType === "investment" ? "Investment" :
                                kpi.dealType === "revenue_share" ? "Revenue Share" : "Flat Fee"}
                             </Badge>
-                            {kpi.theyGet && <p><span className="font-medium">They get:</span> {kpi.theyGet}</p>}
-                            {kpi.weGet && <p><span className="font-medium">We get:</span> {kpi.weGet}</p>}
-                            {kpi.successCriteria && <p><span className="font-medium">Success:</span> {kpi.successCriteria}</p>}
+                            <div className="flex items-center gap-1">
+                              <span className="font-medium shrink-0">They get:</span>
+                              <Input
+                                className="h-5 text-xs p-1 flex-1"
+                                value={kpi.theyGet || ""}
+                                onChange={(e) => updateKPIField(activeFounder.id, kpi.id, "theyGet", e.target.value)}
+                              />
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span className="font-medium shrink-0">We get:</span>
+                              <Input
+                                className="h-5 text-xs p-1 flex-1"
+                                value={kpi.weGet || ""}
+                                onChange={(e) => updateKPIField(activeFounder.id, kpi.id, "weGet", e.target.value)}
+                              />
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span className="font-medium shrink-0">Success:</span>
+                              <Input
+                                className="h-5 text-xs p-1 flex-1"
+                                value={kpi.successCriteria || ""}
+                                onChange={(e) => updateKPIField(activeFounder.id, kpi.id, "successCriteria", e.target.value)}
+                              />
+                            </div>
                           </div>
                         )}
                         <p className="text-xs font-mono text-muted-foreground">
@@ -974,7 +1052,7 @@ export function KPIInput({ founders, setFounders, onComplete }: KPIInputProps) {
                           </div>
                         )}
                       </div>
-                      <div className="flex gap-1 flex-wrap items-center">
+                      <div className="flex gap-1 flex-wrap items-center shrink-0">
                         <select
                           className="h-7 rounded border border-input bg-background px-2 text-xs"
                           value={kpi.status || "planned"}
@@ -985,13 +1063,6 @@ export function KPIInput({ founders, setFounders, onComplete }: KPIInputProps) {
                           <option value="completed">Completed</option>
                           <option value="missed">Missed</option>
                         </select>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => startEdit(kpi)}
-                        >
-                          <Pencil className="h-4 w-4 text-muted-foreground" />
-                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"
