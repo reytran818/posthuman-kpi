@@ -106,25 +106,39 @@ export async function POST(req: Request) {
 
 ## CALCULATION METHOD (use this exactly)
 
-Equity formula: (founderScore / totalAllScores) × 100%
+Equity formula: (founderScore / totalAllScores) × 90% (founder pool)
 
-founderScore = (KPI_value × 0.7) + (prior_contribution_value × 0.3)
+founderScore = ((KPI_value × 0.7) + (contribution_value × 0.3)) × skills_multiplier
 
 KPI_value per KPI = weight × category_multiplier × difficulty_multiplier × time_decay × log10(targetValue+1)
   Category multipliers: revenue=1.5, fundraising=1.4, product=1.3, technical=1.2, marketing=1.1, operations=1.0, leadership=1.15, culture=0.9
   Difficulty multipliers: low=0.6, medium=1.0, high=1.5, extreme=2.2
   Time decay: 0.85^(months/12) — shorter timeframes = more valuable
 
-Prior contribution value = sum of (type_weight × log2(hours+1) × log10($value+1) × 10) + experience_bonus
+Contribution_value = (base_contributions + experience_base) × experience_multiplier
+  base_contributions = sum of (type_weight × log2(hours+1) × log10($value+1) × 10) per contribution
   Type weights: execution=1.0, technical_build=0.95, revenue_generated=0.9, capital_invested=0.85, ip_created=0.8, domain_expertise=0.7, team_recruited=0.65, network_connections=0.5, market_research=0.4, idea_vision=0.3
-  Experience bonus: log2(years+1) × 5
+  experience_base = log2(years+1) × 15  — standalone credit for years in industry
+  experience_multiplier = 1 + (min(years, 20) / 40) — up to 1.5x for 20+ years of experience
+  Example: 10yr veteran gets 1.25x multiplier; 20yr veteran gets 1.5x
+
+Skills_multiplier = 1 + (min(skills_count, 15) × 0.02) — up to 1.3x for 15+ relevant skills
+  Relevant skills signal domain expertise and increase KPI delivery probability.
 
 Hours adjustment: Scale equity proportionally by (hours/40) for part-time founders.
+
+## EXPERIENCE FAIRNESS RULES:
+- A founder with 15+ years industry experience brings institutional knowledge that de-risks the company — weight this.
+- Experience WITHOUT execution (no contributions, no KPIs) is worth less. Experience multiplies contributions, not replaces them.
+- Two founders with identical KPIs but different experience: the experienced one gets more because they're more likely to deliver.
+- A new grad (0-2 years) vs a seasoned executive (15+ years) requesting the same equity is a RED FLAG unless the new grad has extreme execution velocity.
+- Skills overlap between founders reduces the marginal value of redundant expertise — flag this.
+- Always show "Experience Factor" in your equity breakdown so founders can see how experience affected the calculation.
 
 ## FORMAT YOUR RESPONSE EXACTLY AS:
 
 **Equity Split (calculated):**
-[Each founder: Name — X.X% (their requested: Y%) — verdict: FAIR / OVER / UNDER with 1-line reason]
+[Each founder: Name — X.X% (requested: Y%) — Experience: Z yrs (×M multiplier, N skills) — verdict: FAIR / OVER / UNDER with 1-line reason]
 
 **Total Equity Allocated:** X% of 90% founder pool
 **Employee Option Pool:** 10% (reserved)

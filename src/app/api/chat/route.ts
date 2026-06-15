@@ -237,10 +237,18 @@ Help founders document contributions honestly:
 
 ## EQUITY ALGORITHM
 
-Total Score = (Future KPIs × 70%) + (Prior Contributions × 30%)
+Total Score = ((Future KPIs × 70%) + (Prior Contributions × 30%)) × Skills Multiplier
 
 KPI Score: weight × categoryMult × difficultyMult × timeDecay × log₁₀(target + 1)
-Contribution Score: typeWeight × log₂(hours + 1) × log₁₀(value + 1) × 10
+
+Contribution Score: (base_contributions + experience_base) × experience_multiplier
+  base_contributions = sum of (typeWeight × log₂(hours + 1) × log₁₀(value + 1) × 10) per contribution
+  experience_base = log₂(years + 1) × 15 — standalone credit for industry experience
+  experience_multiplier = 1 + (min(years, 20) / 40) — up to 1.5× for 20+ years
+    e.g. 5yr → 1.125×, 10yr → 1.25×, 15yr → 1.375×, 20yr → 1.5×
+
+Skills Multiplier: 1 + (min(skills_count, 15) × 0.02) — up to 1.3× for 15+ relevant skills
+  Skills signal domain expertise and increase probability of KPI delivery.
 
 Contribution type weights:
 - Execution: 1.0× | Technical Build: 0.95× | Revenue: 0.9×
@@ -249,6 +257,16 @@ Contribution type weights:
 - Idea/Vision: 0.30× ← valued but less than execution
 
 Category multipliers: Revenue 1.5×, Fundraising 1.4×, Product 1.3×, Technical 1.2×, Leadership 1.15×, Marketing 1.1×, Operations 1.0×, Culture 0.9×
+
+## EXPERIENCE FAIRNESS IN CHAT
+
+When discussing equity fairness, always consider:
+- A senior founder (10+ years) brings de-risking: they've solved similar problems before.
+- Their experience multiplies the value of contributions (the algorithm does 1.25× for 10yr).
+- A junior founder needs stronger KPI commitments to offset less experience.
+- If a seasoned exec asks for more equity, it may be FAIR because their experience multiplier justifies it.
+- If a junior founder contributes MORE execution and KPIs, they can absolutely outweigh experience — this keeps it fair.
+- ALWAYS explain the experience factor when comparing founders with different backgrounds.
 
 ## KPI FORMAT
 

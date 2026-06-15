@@ -193,6 +193,13 @@ export function contributionToValue(contribution: Contribution): number {
 
 /**
  * Calculates the total prior contribution value for a founder.
+ * Experience is weighted as a meaningful multiplier, not just a tiny addon.
+ *
+ * Formula: (baseContributions + experienceBase) × experienceMultiplier
+ *
+ * experienceBase = log2(years+1) × 15  — standalone credit for domain expertise
+ * experienceMultiplier = 1 + (min(years, 20) / 40) — up to 1.5x for 20+ years
+ *   This means a 10yr veteran gets 1.25x on their contributions vs a 0yr founder.
  */
 export function founderContributionValue(founder: Founder): number {
   const contributions = founder.contributions || [];
@@ -201,11 +208,11 @@ export function founderContributionValue(founder: Founder): number {
     0
   );
 
-  // Experience bonus: diminishing returns, caps around 20 years
   const years = founder.yearsExperience || 0;
-  const experienceBonus = Math.log2(Math.max(years, 1) + 1) * 5;
+  const experienceBase = Math.log2(Math.max(years, 1) + 1) * 15;
+  const experienceMultiplier = 1 + Math.min(years, 20) / 40;
 
-  return baseContributions + experienceBonus;
+  return (baseContributions + experienceBase) * experienceMultiplier;
 }
 
 /**
@@ -214,9 +221,21 @@ export function founderContributionValue(founder: Founder): number {
  *
  * Split: 70% future execution (KPIs) + 30% prior contributions
  * This ensures execution commitment outweighs past work.
+ *
+ * Skills relevance multiplier: Founders with more relevant skills
+ * get a credibility boost (1.0 to 1.3x) — the logic being that
+ * domain expertise makes KPI delivery more probable.
  */
 const FUTURE_WEIGHT = 0.7;
 const PRIOR_WEIGHT = 0.3;
+
+function skillsMultiplier(founder: Founder): number {
+  const skills = founder.relevantSkills || [];
+  const count = skills.length;
+  if (count === 0) return 1.0;
+  // Diminishing returns: caps at 1.3x around 15+ skills
+  return 1 + Math.min(count, 15) * 0.02;
+}
 
 export function founderEnterpriseValue(founder: Founder): number {
   const kpiScore = founder.kpis.reduce(
@@ -224,7 +243,8 @@ export function founderEnterpriseValue(founder: Founder): number {
     0
   );
   const contributionScore = founderContributionValue(founder);
-  return kpiScore * FUTURE_WEIGHT + contributionScore * PRIOR_WEIGHT;
+  const skillsMult = skillsMultiplier(founder);
+  return (kpiScore * FUTURE_WEIGHT + contributionScore * PRIOR_WEIGHT) * skillsMult;
 }
 
 /**
