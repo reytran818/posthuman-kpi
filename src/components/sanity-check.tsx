@@ -205,16 +205,24 @@ export function SanityCheck({ founders }: SanityCheckProps) {
       checks.push({ label: "Math: No Single Founder > Pool", severity: "pass", detail: `No founder exceeds ${founderPool}% cap` });
     }
 
-    // 16. KPI weights per founder (should be reasonable, flag if total > 500 or any single > 100)
-    for (const f of founders) {
-      const totalWeight = f.kpis.reduce((s, k) => s + k.weight, 0);
-      const maxWeight = f.kpis.reduce((m, k) => Math.max(m, k.weight), 0);
-      if (maxWeight > 100) {
-        checks.push({ label: `Math: ${f.name} KPI Weight`, severity: "fail", detail: `Has a KPI with weight ${maxWeight} — max allowed is 100` });
-      } else if (totalWeight > 500 && f.kpis.length > 3) {
-        checks.push({ label: `Math: ${f.name} KPI Weight`, severity: "warn", detail: `Total KPI weights = ${totalWeight} across ${f.kpis.length} KPIs — very high, may inflate their score disproportionately` });
-      } else if (f.kpis.length > 0) {
-        checks.push({ label: `Math: ${f.name} KPI Weight`, severity: "pass", detail: `Total weights: ${totalWeight} across ${f.kpis.length} KPIs (avg: ${(totalWeight / f.kpis.length).toFixed(0)})` });
+    // 16. KPI weights per founder — only flag disparity, not absolute values
+    const founderWeights = founders.filter(f => f.kpis.length > 0).map(f => ({
+      name: f.name,
+      total: f.kpis.reduce((s, k) => s + k.weight, 0),
+      count: f.kpis.length,
+      max: f.kpis.reduce((m, k) => Math.max(m, k.weight), 0),
+    }));
+    const avgTotal = founderWeights.length > 0 ? founderWeights.reduce((s, fw) => s + fw.total, 0) / founderWeights.length : 0;
+
+    for (const fw of founderWeights) {
+      if (fw.max > 100) {
+        checks.push({ label: `Math: ${fw.name} KPI Weight`, severity: "fail", detail: `Has a KPI with weight ${fw.max} — max allowed is 100` });
+      } else if (fw.total > avgTotal * 1.4 && founderWeights.length > 1) {
+        checks.push({ label: `Math: ${fw.name} KPI Weight`, severity: "warn", detail: `Total weights (${fw.total}) is ${Math.round((fw.total / avgTotal - 1) * 100)}% above team average (${Math.round(avgTotal)}). This may inflate their score relative to others. Consider normalizing weights so they represent priority within their own KPIs.` });
+      } else if (fw.total < avgTotal * 0.6 && founderWeights.length > 1) {
+        checks.push({ label: `Math: ${fw.name} KPI Weight`, severity: "warn", detail: `Total weights (${fw.total}) is ${Math.round((1 - fw.total / avgTotal) * 100)}% below team average (${Math.round(avgTotal)}). This deflates their score. Consider increasing weights on high-priority KPIs.` });
+      } else {
+        checks.push({ label: `Math: ${fw.name} KPI Weight`, severity: "pass", detail: `Total: ${fw.total} across ${fw.count} KPIs (avg ${Math.round(fw.total / fw.count)}/KPI) — within normal range` });
       }
     }
 
