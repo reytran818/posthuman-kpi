@@ -799,104 +799,60 @@ export function KPIInput({ founders, setFounders, onComplete }: KPIInputProps) {
                   return (
                     <Card key={kpi.id} className="border-blue-500/50">
                       <CardContent className="py-4 space-y-3">
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-1">
-                            <Label className="text-xs">Name</Label>
-                            <Input
-                              value={editForm.name}
-                              onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">Description</Label>
-                            <Input
-                              value={editForm.description}
-                              onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                            />
-                          </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium">What will you deliver?</Label>
+                          <Input
+                            value={editForm.description || editForm.name}
+                            onChange={(e) => setEditForm({ ...editForm, description: e.target.value, name: e.target.value.split(".")[0].substring(0, 50) })}
+                            placeholder="Describe what you'll deliver..."
+                          />
                         </div>
-                        <div className="grid grid-cols-4 gap-3">
-                          <div className="space-y-1">
-                            <Label className="text-xs">Target</Label>
-                            <Input
-                              type="number"
-                              value={editForm.targetValue}
-                              onChange={(e) => setEditForm({ ...editForm, targetValue: Number(e.target.value) })}
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">Unit</Label>
-                            <Input
-                              value={editForm.unit}
-                              onChange={(e) => setEditForm({ ...editForm, unit: e.target.value })}
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">Weight (1-100)</Label>
-                            <Input
-                              type="number"
-                              min={1}
-                              max={100}
-                              value={editForm.weight}
-                              onChange={(e) => setEditForm({ ...editForm, weight: Number(e.target.value) })}
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">Months</Label>
-                            <Input
-                              type="number"
-                              min={1}
-                              max={60}
-                              value={editForm.timeframeMonths}
-                              onChange={(e) => setEditForm({ ...editForm, timeframeMonths: Number(e.target.value) })}
-                            />
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-3 gap-3">
-                          <div className="space-y-1">
-                            <Label className="text-xs">Difficulty</Label>
-                            <Select
-                              value={editForm.difficulty as string}
-                              onValueChange={(v) => setEditForm({ ...editForm, difficulty: v })}
-                            >
-                              <SelectTrigger className="h-8">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {DIFFICULTIES.map((d) => (
-                                  <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">They Get (deal)</Label>
-                            <Input
-                              placeholder="optional"
-                              value={editForm.theyGet}
-                              onChange={(e) => setEditForm({ ...editForm, theyGet: e.target.value })}
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">We Get (deal)</Label>
-                            <Input
-                              placeholder="optional"
-                              value={editForm.weGet}
-                              onChange={(e) => setEditForm({ ...editForm, weGet: e.target.value })}
-                            />
-                          </div>
-                        </div>
-                        {(editForm.theyGet || editForm.weGet) && (
-                          <div className="space-y-1">
-                            <Label className="text-xs">Success Criteria</Label>
-                            <Input
-                              placeholder="How is success measured? (hard numbers)"
-                              value={editForm.successCriteria}
-                              onChange={(e) => setEditForm({ ...editForm, successCriteria: e.target.value })}
-                            />
-                          </div>
-                        )}
                         <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            onClick={async () => {
+                              const desc = (editForm.description || editForm.name) as string;
+                              if (!desc) return;
+                              try {
+                                const res = await fetch("/api/suggest-kpi", {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ actionItem: desc, role: activeFounder?.role }),
+                                });
+                                if (res.ok && res.body) {
+                                  const reader = res.body.getReader();
+                                  const decoder = new TextDecoder();
+                                  let text = "";
+                                  while (true) {
+                                    const { done, value } = await reader.read();
+                                    if (done) break;
+                                    text += decoder.decode(value, { stream: true });
+                                  }
+                                  const jsonMatch = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim().match(/\{[\s\S]*\}/);
+                                  if (jsonMatch) {
+                                    const s = JSON.parse(jsonMatch[0]);
+                                    setEditForm((prev) => ({
+                                      ...prev,
+                                      name: s.name || prev.name,
+                                      description: s.description || prev.description,
+                                      targetValue: s.targetValue || prev.targetValue,
+                                      unit: s.unit || prev.unit,
+                                      weight: s.weight || prev.weight,
+                                      timeframeMonths: s.timeframeMonths || prev.timeframeMonths,
+                                      difficulty: s.difficulty || prev.difficulty,
+                                      theyGet: s.theyGet || prev.theyGet || "",
+                                      weGet: s.weGet || prev.weGet || "",
+                                      successCriteria: s.successCriteria || prev.successCriteria || "",
+                                    }));
+                                  }
+                                }
+                              } catch { /* silent */ }
+                            }}
+                            className="gap-1"
+                          >
+                            <Sparkles className="h-3.5 w-3.5" />
+                            Regenerate Numbers with AI
+                          </Button>
                           <Button
                             size="sm"
                             onClick={() => saveEdit(activeFounder.id, kpi.id)}
@@ -910,6 +866,26 @@ export function KPIInput({ founders, setFounders, onComplete }: KPIInputProps) {
                             Cancel
                           </Button>
                         </div>
+                        {editForm.targetValue && Number(editForm.targetValue) > 0 && editForm.unit && (
+                          <div className="grid grid-cols-4 gap-2 text-xs p-2 bg-muted/50 rounded">
+                            <div className="text-center">
+                              <p className="text-muted-foreground">Target</p>
+                              <p className="font-mono font-bold">{Number(editForm.targetValue).toLocaleString()} {editForm.unit}</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-muted-foreground">Weight</p>
+                              <p className="font-mono font-bold">{editForm.weight}/100</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-muted-foreground">Difficulty</p>
+                              <p className="font-bold capitalize">{editForm.difficulty}</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-muted-foreground">Timeframe</p>
+                              <p className="font-mono font-bold">{editForm.timeframeMonths}mo</p>
+                            </div>
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   );
