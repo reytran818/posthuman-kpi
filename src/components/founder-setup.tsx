@@ -31,6 +31,7 @@ import {
   FileText,
   Briefcase,
   AlertTriangle,
+  Sparkles,
 } from "lucide-react";
 
 interface FounderSetupProps {
@@ -63,6 +64,8 @@ export function FounderSetup({
     founders[0]?.id || null
   );
   const [newSkill, setNewSkill] = useState("");
+  const [rewordingResume, setRewordingResume] = useState<string | null>(null);
+  const [rewordingContrib, setRewordingContrib] = useState(false);
 
   // Contribution form
   const [contribForm, setContribForm] = useState({
@@ -103,6 +106,59 @@ export function FounderSetup({
     setFounders(
       founders.map((f) => (f.id === id ? { ...f, ...updates } : f))
     );
+  }
+
+  async function rewordResume(founderId: string) {
+    const founder = founders.find((f) => f.id === founderId);
+    if (!founder?.resume) return;
+    setRewordingResume(founderId);
+    try {
+      const res = await fetch("/api/reword", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: founder.resume,
+          type: "resume",
+          founderName: founder.name,
+          role: founder.role,
+        }),
+      });
+      if (res.ok) {
+        const { reworded } = await res.json();
+        if (reworded) updateFounder(founderId, { resume: reworded });
+      }
+    } catch { /* silent */ }
+    finally { setRewordingResume(null); }
+  }
+
+  async function rewordContribution(founderId: string, contribId: string) {
+    const founder = founders.find((f) => f.id === founderId);
+    const contrib = (founder?.contributions || []).find((c) => c.id === contribId);
+    if (!contrib) return;
+    setRewordingContrib(true);
+    try {
+      const res = await fetch("/api/reword", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: contrib.description,
+          type: "contribution",
+          founderName: founder?.name,
+          role: founder?.role,
+        }),
+      });
+      if (res.ok) {
+        const { reworded } = await res.json();
+        if (reworded) {
+          updateFounder(founderId, {
+            contributions: (founder?.contributions || []).map((c) =>
+              c.id === contribId ? { ...c, description: reworded } : c
+            ),
+          });
+        }
+      }
+    } catch { /* silent */ }
+    finally { setRewordingContrib(false); }
   }
 
   function addSkill(founderId: string) {
@@ -287,10 +343,22 @@ export function FounderSetup({
                   <div className="space-y-6 pt-4 border-t border-border">
                     {/* Resume / Background */}
                     <div className="space-y-2">
-                      <Label className="flex items-center gap-2">
-                        <Briefcase className="h-4 w-4" />
-                        Resume / Background
-                      </Label>
+                      <div className="flex items-center justify-between">
+                        <Label className="flex items-center gap-2">
+                          <Briefcase className="h-4 w-4" />
+                          Resume / Background
+                        </Label>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="h-7 text-xs gap-1"
+                          disabled={!founder.resume || rewordingResume === founder.id}
+                          onClick={() => rewordResume(founder.id)}
+                        >
+                          <Sparkles className={`h-3 w-3 ${rewordingResume === founder.id ? "animate-spin" : ""}`} />
+                          {rewordingResume === founder.id ? "Rewriting..." : "Reword with AI"}
+                        </Button>
+                      </div>
                       <Textarea
                         placeholder="Paste resume summary, relevant experience, previous companies, notable achievements..."
                         value={founder.resume || ""}
@@ -531,15 +599,26 @@ export function FounderSetup({
                                     ` • $${c.estimatedValue.toLocaleString()} value`}
                                 </p>
                               </div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() =>
-                                  removeContribution(founder.id, c.id)
-                                }
-                              >
-                                <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                              </Button>
+                              <div className="flex gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled={rewordingContrib}
+                                  onClick={() => rewordContribution(founder.id, c.id)}
+                                  title="Reword with AI"
+                                >
+                                  <Sparkles className={`h-3.5 w-3.5 text-purple-500 ${rewordingContrib ? "animate-spin" : ""}`} />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() =>
+                                    removeContribution(founder.id, c.id)
+                                  }
+                                >
+                                  <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                </Button>
+                              </div>
                             </div>
                           ))}
                         </div>
