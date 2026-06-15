@@ -76,13 +76,6 @@ export function Recommendations({ founders }: RecommendationsProps) {
     const skills = f.relevantSkills || [];
     const skillsMult = skillsMultiplier(f);
 
-    if (hours < 35 && (f.requestedEquity || 0) >= 15) {
-      recs.push({
-        priority: "high",
-        text: `Working ${hours}h/wk but requesting ${f.requestedEquity}%. Consider increasing hours to justify equity, or lower request. (hours multiplier: ${hoursAdj.toFixed(2)}×)`,
-      });
-    }
-
     if (f.kpis.length < 3) {
       recs.push({
         priority: "medium",
@@ -114,15 +107,10 @@ export function Recommendations({ founders }: RecommendationsProps) {
 
     if (split && f.requestedEquity) {
       const gap = f.requestedEquity - split.equityPercent;
-      if (gap > 5) {
+      if (gap > 10) {
         recs.push({
           priority: "high",
-          text: `Requesting ${gap.toFixed(1)}% more than algorithm calculates. Add higher-impact KPIs or increase hours to close the gap.`,
-        });
-      } else if (gap < -5) {
-        recs.push({
-          priority: "low",
-          text: `Algorithm values you ${Math.abs(gap).toFixed(1)}% higher than requested. You may be underselling yourself.`,
+          text: `Requesting ${gap.toFixed(1)}% more than algorithm calculates. Add higher-impact KPIs to close the gap.`,
         });
       }
     }
