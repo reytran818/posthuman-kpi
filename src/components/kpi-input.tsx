@@ -395,10 +395,12 @@ export function KPIInput({ founders, setFounders, onComplete }: KPIInputProps) {
                 </div>
 
                 {aiReasoning && (
-                  <div className="p-3 bg-purple-500/5 border border-purple-500/20 rounded-lg text-sm">
+                  <div className={`p-3 rounded-lg text-sm ${aiReasoning.startsWith("Error") || aiReasoning.startsWith("Failed") ? "bg-destructive/10 border border-destructive/30" : "bg-purple-500/5 border border-purple-500/20"}`}>
                     <div className="flex items-center gap-2 mb-1">
                       <Sparkles className="h-3.5 w-3.5 text-purple-500" />
-                      <span className="font-medium text-purple-600 text-xs">AI Generated</span>
+                      <span className="font-medium text-purple-600 text-xs">
+                        {aiReasoning.startsWith("Error") || aiReasoning.startsWith("Failed") ? "AI Error" : "AI Generated"}
+                      </span>
                     </div>
                     <p className="text-xs text-muted-foreground italic">{aiReasoning}</p>
                   </div>
