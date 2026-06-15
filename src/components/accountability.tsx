@@ -38,6 +38,8 @@ const DEFAULT_MILESTONES = [
   { id: "inv_safe", category: "Investor That Moved the Needle", description: "Intro → funded SAFE/round", percent: 1.0 },
   { id: "inv_lead", category: "Investor That Moved the Needle", description: "Lead investor seed ($500K+)", percent: 2.0 },
   { id: "inv_strategic", category: "Investor That Moved the Needle", description: "Strategic investor (YC, major partner)", percent: 1.5 },
+  { id: "mil_contract", category: "Military / Defense Contract", description: "Signed military/defense contract (letter of intent won't count)", percent: 3.0 },
+  { id: "mil_revenue", category: "Military / Defense Contract", description: "First $100K+ revenue from military/gov contract", percent: 2.0 },
   { id: "user_2x", category: "User Growth (Above Plan)", description: "2x target users/month for 60 days", percent: 1.0 },
   { id: "user_5x", category: "User Growth (Above Plan)", description: "5x target (viral breakout)", percent: 2.0 },
   { id: "rev_10k", category: "Revenue Milestones", description: "First $10K MRR", percent: 0.5 },
