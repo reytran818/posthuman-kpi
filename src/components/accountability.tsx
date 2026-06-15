@@ -62,18 +62,38 @@ function BonusMilestoneEditor({ pool, awarded }: { pool: number; awarded: number
     <div className="space-y-3">
       {categories.map((cat) => (
         <div key={cat} className="p-2 bg-background rounded border">
-          <p className="font-medium text-sm mb-2">{cat}</p>
+          <Input
+            className="h-6 text-sm font-medium p-1 mb-2 border-none shadow-none focus-visible:ring-1"
+            value={cat}
+            onChange={(e) =>
+              setMilestones((prev) =>
+                prev.map((p) =>
+                  p.category === cat ? { ...p, category: e.target.value } : p
+                )
+              )
+            }
+          />
           {milestones
             .filter((m) => m.category === cat)
             .map((m) => (
               <div key={m.id} className="flex items-center gap-2 mb-1">
-                <span className="text-xs flex-1">{m.description}</span>
+                <Input
+                  className="h-6 text-xs flex-1 p-1"
+                  value={m.description}
+                  onChange={(e) =>
+                    setMilestones((prev) =>
+                      prev.map((p) =>
+                        p.id === m.id ? { ...p, description: e.target.value } : p
+                      )
+                    )
+                  }
+                />
                 <span className="text-xs text-muted-foreground">→</span>
                 <Input
                   type="number"
                   step={0.25}
                   min={0}
-                  max={5}
+                  max={10}
                   className="w-16 h-6 text-xs text-center p-1"
                   value={m.percent}
                   onChange={(e) =>
@@ -85,10 +105,44 @@ function BonusMilestoneEditor({ pool, awarded }: { pool: number; awarded: number
                   }
                 />
                 <span className="text-xs">%</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                  onClick={() => setMilestones((prev) => prev.filter((p) => p.id !== m.id))}
+                >
+                  ×
+                </Button>
               </div>
             ))}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 text-xs mt-1"
+            onClick={() =>
+              setMilestones((prev) => [
+                ...prev,
+                { id: crypto.randomUUID(), category: cat, description: "New milestone...", percent: 0.5 },
+              ])
+            }
+          >
+            + Add milestone
+          </Button>
         </div>
       ))}
+      <Button
+        variant="outline"
+        size="sm"
+        className="text-xs w-full"
+        onClick={() =>
+          setMilestones((prev) => [
+            ...prev,
+            { id: crypto.randomUUID(), category: "New Category", description: "Describe the milestone...", percent: 1.0 },
+          ])
+        }
+      >
+        + Add new category
+      </Button>
       <div className={`flex items-center justify-between p-2 rounded text-xs font-medium ${overBudget ? "bg-destructive/10 text-destructive" : "bg-green-500/10 text-green-600"}`}>
         <span>Total allocated from {pool}% pool:</span>
         <span className="font-mono">{totalAllocated.toFixed(2)}% / {available.toFixed(2)}% available</span>
