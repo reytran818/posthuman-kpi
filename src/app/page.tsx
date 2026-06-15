@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FounderSetup } from "@/components/founder-setup";
 import { KPIInput } from "@/components/kpi-input";
@@ -12,44 +12,13 @@ import { Accountability } from "@/components/accountability";
 import { SanityCheck } from "@/components/sanity-check";
 import { Recommendations } from "@/components/recommendations";
 import { useSharedFounders } from "@/hooks/use-shared-founders";
-import { EMPLOYEE_OPTION_POOL } from "@/lib/kpi-engine";
-import { Users, Target, BarChart3, RotateCcw, Cloud, Shield, Eye, Save, Wrench, RefreshCw, Scale, ClipboardCheck, AlertTriangle, Lightbulb } from "lucide-react";
+import { Users, Target, BarChart3, RotateCcw, Cloud, Shield, Eye, Save, Wrench, RefreshCw, Scale, ClipboardCheck, Lightbulb } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function Home() {
   const { founders, setFounders, isLoading, isSaving, lastSaved, saveNow, refresh, resetAll } =
     useSharedFounders();
   const [activeTab, setActiveTab] = useState("founders");
-
-  const mathIssues = useMemo(() => {
-    if (founders.length === 0) return [];
-    const issues: string[] = [];
-    const totalRequested = founders.reduce((s, f) => s + (f.requestedEquity || 0), 0);
-    const founderPool = 100 - EMPLOYEE_OPTION_POOL;
-    if (totalRequested > founderPool) {
-      issues.push(`Total requested (${totalRequested}%) > founder pool (${founderPool}%)`);
-    }
-    for (const f of founders) {
-      if ((f.requestedEquity || 0) > 50) issues.push(`${f.name} requests ${f.requestedEquity}% (>50%)`);
-      for (const k of f.kpis) {
-        if (k.targetValue <= 0) issues.push(`${f.name}: "${k.name}" has target ≤ 0`);
-        if (k.weight > 100) issues.push(`${f.name}: "${k.name}" has weight > 100`);
-        if (k.timeframeMonths < 1 || k.timeframeMonths > 60) issues.push(`${f.name}: "${k.name}" has invalid timeframe`);
-      }
-      for (const c of (f.contributions || [])) {
-        if (c.estimatedValue < 0) issues.push(`${f.name}: contribution has negative value`);
-      }
-      if (f.commitmentStatus === "full_time" && (f.hoursPerWeek || 0) < 30) {
-        // Auto-fix: derive status from hours
-        issues.push(`${f.name}: status should be "part-time" at ${f.hoursPerWeek}h/wk (auto-fixing on next save)`);
-      }
-    }
-    const totalBonus = founders.reduce((s, f) => s + (f.bonusEquityEarned || 0), 0);
-    if (totalRequested + EMPLOYEE_OPTION_POOL + totalBonus > 100) {
-      issues.push(`Grand total exceeds 100%`);
-    }
-    return issues;
-  }, [founders]);
 
   if (isLoading) {
     return (
@@ -119,30 +88,6 @@ export default function Home() {
       </header>
 
       <div className="mx-auto max-w-6xl px-6 py-8">
-        {mathIssues.length > 0 && (
-          <div className="mb-4 p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
-            <div className="flex items-center gap-2 mb-1">
-              <AlertTriangle className="h-4 w-4 text-destructive" />
-              <span className="text-sm font-bold text-destructive">
-                {mathIssues.length} Math Issue{mathIssues.length > 1 ? "s" : ""} — Numbers Don&apos;t Add Up
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="ml-auto h-6 text-xs text-destructive"
-                onClick={() => setActiveTab("sanity")}
-              >
-                View Details →
-              </Button>
-            </div>
-            <div className="text-xs text-destructive/80 space-y-0.5">
-              {mathIssues.slice(0, 3).map((issue, i) => (
-                <p key={i}>• {issue}</p>
-              ))}
-              {mathIssues.length > 3 && <p>...and {mathIssues.length - 3} more</p>}
-            </div>
-          </div>
-        )}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-9">
             <TabsTrigger value="founders" className="gap-2">
