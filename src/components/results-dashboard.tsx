@@ -74,11 +74,18 @@ export function ResultsDashboard({ founders }: ResultsDashboardProps) {
   const roleAssignments = assignRoles(founders);
   const investorCheck = investorReadinessCheck(founders);
 
-  const pieData = equitySplit.map((s, i) => ({
-    name: s.founderName,
-    value: Number(s.equityPercent.toFixed(2)),
-    color: COLORS[i % COLORS.length],
-  }));
+  const pieData = [
+    ...equitySplit.map((s, i) => ({
+      name: s.founderName,
+      value: Number(s.equityPercent.toFixed(2)),
+      color: COLORS[i % COLORS.length],
+    })),
+    {
+      name: "Employee Option Pool",
+      value: 10,
+      color: "#94a3b8",
+    },
+  ];
 
   const stackedBarData = founders.map((f) => ({
     name: f.name,
@@ -106,8 +113,8 @@ export function ResultsDashboard({ founders }: ResultsDashboardProps) {
           Equity Allocation Results
         </h2>
         <p className="text-muted-foreground mt-1">
-          Calculated from KPI commitments (70%) and prior contributions (30%).
-          Execution is weighted 3.3× higher than ideas.
+          Founders split 90% (10% reserved for employee option pool).
+          Split calculated from KPI commitments (70%) and prior contributions (30%).
         </p>
       </div>
 

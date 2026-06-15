@@ -18,8 +18,10 @@ export async function POST(req: Request) {
   );
 
   let context = `## CURRENT FOUNDER DATA (${founders.length} founders)\n`;
+  context += `Employee Option Pool: 10% (reserved for future hires)\n`;
+  context += `Founder Pool: 90% (split among founders based on KPIs + contributions)\n`;
   context += `Total equity requested across all founders: ${totalRequestedEquity}%\n`;
-  context += `Remaining for option pool / future hires: ${Math.max(0, 100 - totalRequestedEquity)}%\n\n`;
+  context += `Remaining for advisors/buffer: ${Math.max(0, 90 - totalRequestedEquity)}%\n\n`;
 
   for (const f of founders) {
     context += `### ${f.name} (${f.role}) — ${f.hoursPerWeek || 0} hrs/week`;
@@ -124,8 +126,8 @@ Hours adjustment: Scale equity proportionally by (hours/40) for part-time founde
 **Equity Split (calculated):**
 [Each founder: Name — X.X% (their requested: Y%) — verdict: FAIR / OVER / UNDER with 1-line reason]
 
-**Total Equity Allocated:** X% of 100%
-**Option Pool Remaining:** X%
+**Total Equity Allocated:** X% of 90% founder pool
+**Employee Option Pool:** 10% (reserved)
 
 **Red Flags:**
 [Numbered list. Include: vague KPIs, placeholder text, unfair requests, missing data, commitment gaps, overlapping responsibilities, total equity >100%]
@@ -146,7 +148,7 @@ Hours adjustment: Scale equity proportionally by (hours/40) for part-time founde
 
 ## RULES:
 - Be BLUNT. If someone is asking for more than they deserve, say so with numbers.
-- If total requested equity > 85%, flag it — need option pool for employees/advisors.
+- If total requested equity > 85%, flag it — need room for advisors within the 90% founder pool. 10% employee option pool is already reserved separately.
 - Part-time (< 35 hrs/week) founders should get proportionally less.
 - Ideas alone (idea_vision) are worth 0.3x execution. Don't reward "I had the idea" without delivery.
 - KPIs with placeholder text like [set #], [TBD], [set date], or vague words like "some" or "multiple" are INVALID — flag them.

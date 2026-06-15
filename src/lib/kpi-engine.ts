@@ -237,6 +237,10 @@ export function founderKPIScore(founder: Founder): number {
 /**
  * Given multiple founders, calculates equitable equity split.
  */
+// 10% reserved for employee option pool
+export const EMPLOYEE_OPTION_POOL = 10;
+const FOUNDER_POOL = 100 - EMPLOYEE_OPTION_POOL; // 90%
+
 export function calculateEquitySplit(
   founders: Founder[]
 ): {
@@ -258,13 +262,13 @@ export function calculateEquitySplit(
   const totalScore = scores.reduce((sum, s) => sum + s.rawScore, 0);
 
   if (totalScore === 0) {
-    const equalSplit = 100 / founders.length;
+    const equalSplit = FOUNDER_POOL / founders.length;
     return scores.map((s) => ({ ...s, equityPercent: equalSplit }));
   }
 
   return scores.map((s) => ({
     ...s,
-    equityPercent: (s.rawScore / totalScore) * 100,
+    equityPercent: (s.rawScore / totalScore) * FOUNDER_POOL,
   }));
 }
 
