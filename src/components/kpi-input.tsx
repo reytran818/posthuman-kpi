@@ -229,25 +229,32 @@ export function KPIInput({ founders, setFounders, onComplete }: KPIInputProps) {
       });
       if (res.ok) {
         const suggestion = await res.json();
+        if (suggestion.error) {
+          setAiReasoning(`Error: ${suggestion.error}`);
+          return;
+        }
         setKpiForm((prev) => ({
           ...prev,
           name: suggestion.name || prev.name,
           description: suggestion.description || prev.description,
           category: suggestion.category || prev.category,
-          targetValue: suggestion.targetValue,
-          unit: suggestion.unit,
-          weight: suggestion.weight,
+          targetValue: suggestion.targetValue || prev.targetValue,
+          unit: suggestion.unit || prev.unit,
+          weight: suggestion.weight || prev.weight,
           timeframeMonths: suggestion.timeframeMonths || prev.timeframeMonths,
-          difficulty: suggestion.difficulty,
+          difficulty: suggestion.difficulty || prev.difficulty,
           dealType: suggestion.dealType || "standard",
           theyGet: suggestion.theyGet || "",
           weGet: suggestion.weGet || "",
           successCriteria: suggestion.successCriteria || "",
         }));
-        setAiReasoning(suggestion.reasoning);
+        setAiReasoning(suggestion.reasoning || "Generated successfully.");
+      } else {
+        const err = await res.text();
+        setAiReasoning(`Failed (${res.status}): ${err.substring(0, 100)}`);
       }
-    } catch {
-      // silently fail
+    } catch (e) {
+      setAiReasoning(`Error: ${e instanceof Error ? e.message : "Unknown error"}`);
     } finally {
       setAiSuggesting(false);
     }
