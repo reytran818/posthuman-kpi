@@ -498,12 +498,28 @@ export function FounderSetup({
                           max={80}
                           placeholder="e.g. 40"
                           value={(founder as Record<string, unknown>).hoursPerWeek as number || ""}
-                          onChange={(e) =>
+                          onChange={(e) => {
+                            const hours = Number(e.target.value);
+                            let status: string;
+                            if (hours >= 35) status = "full_time";
+                            else if (hours >= 20) status = "part_time";
+                            else if (hours > 0) status = "part_time";
+                            else status = "part_time";
                             updateFounder(founder.id, {
-                              hoursPerWeek: Number(e.target.value),
-                            } as Partial<Founder>)
-                          }
+                              hoursPerWeek: hours,
+                              commitmentStatus: status,
+                            } as Partial<Founder>);
+                          }}
                         />
+                        <p className="text-xs text-muted-foreground">
+                          {((founder as Record<string, unknown>).hoursPerWeek as number || 0) >= 35
+                            ? "✓ Full-time"
+                            : ((founder as Record<string, unknown>).hoursPerWeek as number || 0) >= 20
+                            ? "⚠ Part-time — equity adjusted proportionally"
+                            : ((founder as Record<string, unknown>).hoursPerWeek as number || 0) > 0
+                            ? "⚠ Part-time (minimal) — significant equity reduction"
+                            : ""}
+                        </p>
                         {((founder as Record<string, unknown>).hoursPerWeek as number || 0) < 35 && (founder as Record<string, unknown>).hoursPerWeek !== undefined && (founder as Record<string, unknown>).hoursPerWeek !== "" && (
                           <p className="text-xs text-destructive">
                             ⚠ Less than 35 hrs/wk — investors expect full-time (40+)

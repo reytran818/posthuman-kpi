@@ -77,10 +77,12 @@ export function SanityCheck({ founders }: SanityCheckProps) {
       }
     }
 
-    // 5. Commitment status consistency
+    // 5. Commitment status consistency — auto-derived from hours
     for (const f of founders) {
-      if (f.commitmentStatus === "full_time" && (f.hoursPerWeek || 0) < 30) {
-        checks.push({ label: `${f.name} Status Mismatch`, severity: "fail", detail: `Marked "full-time" but only ${f.hoursPerWeek}h/wk — fix one or the other` });
+      const hrs = f.hoursPerWeek || 0;
+      const correctStatus = hrs >= 35 ? "full_time" : "part_time";
+      if (f.commitmentStatus && f.commitmentStatus !== correctStatus && f.commitmentStatus !== "student" && f.commitmentStatus !== "transitioning") {
+        checks.push({ label: `${f.name} Status Mismatch`, severity: "warn", detail: `Marked "${f.commitmentStatus}" but ${hrs}h/wk → should be "${correctStatus}". Status auto-updates on next edit.` });
       }
     }
 

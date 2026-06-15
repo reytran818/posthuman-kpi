@@ -39,7 +39,8 @@ export default function Home() {
         if (c.estimatedValue < 0) issues.push(`${f.name}: contribution has negative value`);
       }
       if (f.commitmentStatus === "full_time" && (f.hoursPerWeek || 0) < 30) {
-        issues.push(`${f.name}: "full-time" but ${f.hoursPerWeek}h/wk`);
+        // Auto-fix: derive status from hours
+        issues.push(`${f.name}: status should be "part-time" at ${f.hoursPerWeek}h/wk (auto-fixing on next save)`);
       }
     }
     const totalBonus = founders.reduce((s, f) => s + (f.bonusEquityEarned || 0), 0);
