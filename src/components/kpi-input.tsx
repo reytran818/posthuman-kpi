@@ -425,17 +425,6 @@ export function KPIInput({ founders, setFounders, onComplete }: KPIInputProps) {
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          {hasAnyKPIs && (
-            <Button
-              variant="secondary"
-              onClick={bulkRegenerate}
-              disabled={bulkRegenerating}
-              className="gap-2"
-            >
-              <Sparkles className={`h-4 w-4 ${bulkRegenerating ? "animate-spin" : ""}`} />
-              {bulkRegenerating ? "Regenerating all..." : "Regenerate All KPIs with AI"}
-            </Button>
-          )}
           {activeFounder && activeFounder.kpis.length > 0 && (
             <Button
               variant="outline"
