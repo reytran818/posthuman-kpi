@@ -107,10 +107,10 @@ export function Recommendations({ founders }: RecommendationsProps) {
 
     if (split && f.requestedEquity) {
       const gap = f.requestedEquity - split.equityPercent;
-      if (gap > 10) {
+      if (gap > 3) {
         recs.push({
-          priority: "high",
-          text: `Requesting ${gap.toFixed(1)}% more than algorithm calculates. Add higher-impact KPIs to close the gap.`,
+          priority: gap > 7 ? "high" : "medium",
+          text: `Requesting ${f.requestedEquity}% but algorithm calculates ${split.equityPercent.toFixed(1)}%. Gap of ${gap.toFixed(1)}% needs justification or KPI additions.`,
         });
       }
     }
