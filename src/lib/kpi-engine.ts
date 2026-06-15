@@ -124,6 +124,18 @@ export const FounderSchema = z.object({
     equityAmount: z.number(),
     earnedDate: z.string(),
   })).optional(),
+  // Milestone-based equity lock-in
+  equityMilestones: z.array(z.object({
+    id: z.string(),
+    kpiName: z.string(),
+    targetValue: z.number(),
+    unit: z.string(),
+    equityPercent: z.number(),
+    achieved: z.boolean(),
+    achievedDate: z.string().optional(),
+    evidence: z.string().optional(),
+  })).optional(),
+  lockedEquity: z.number().optional(),
 });
 
 export type Founder = z.infer<typeof FounderSchema>;

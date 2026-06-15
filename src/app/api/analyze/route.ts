@@ -83,6 +83,22 @@ export async function POST(req: Request) {
         context += `    - Bonus: ${bm.description} (+${bm.equityAmount}% on ${bm.earnedDate})\n`;
       }
     }
+    if (f.equityMilestones?.length > 0) {
+      const locked = f.equityMilestones.filter((m: Record<string, unknown>) => m.achieved);
+      const pending = f.equityMilestones.filter((m: Record<string, unknown>) => !m.achieved);
+      if (locked.length > 0) {
+        context += `  🔒 LOCKED EQUITY (${(f.lockedEquity || 0)}% permanently locked):\n`;
+        for (const m of locked) {
+          context += `    - ✅ ${m.kpiName}: ${m.targetValue} ${m.unit} → ${m.equityPercent}% locked (${m.achievedDate})\n`;
+        }
+      }
+      if (pending.length > 0) {
+        context += `  🎯 Pending lock-in milestones:\n`;
+        for (const m of pending) {
+          context += `    - ${m.kpiName}: ${m.targetValue} ${m.unit} → will lock ${m.equityPercent}%\n`;
+        }
+      }
+    }
     context += `\n`;
   }
 
@@ -142,6 +158,7 @@ Hours adjustment: Scale equity proportionally by (hours/40) for part-time founde
 - Compare requested equity vs calculated equity. Difference > 5% = unfair.
 - Founders with 0 KPIs get 0% in calculations. Flag this loudly.
 - 5% bonus pool exists for above-plan achievements (user growth, celebrity deals, investor intros).
+- Milestone lock-ins: founders can permanently lock equity by hitting hard targets. Locked equity survives even bad-leaver departure. Report locked vs unlocked for each founder.
 - Always end with ONE concrete number the team should discuss.`,
     messages: [
       {

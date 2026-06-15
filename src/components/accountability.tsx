@@ -18,6 +18,8 @@ import {
   AlertTriangle,
   Award,
   Ban,
+  Check,
+  Lock,
   PauseCircle,
   PlayCircle,
   Plus,
@@ -35,6 +37,13 @@ const BONUS_POOL_TOTAL = 5; // 5% total bonus pool
 export function Accountability({ founders, setFounders }: AccountabilityProps) {
   const [warningForm, setWarningForm] = useState({ founderId: "", reason: "" });
   const [bonusForm, setBonusForm] = useState({ founderId: "", description: "", amount: 0.5 });
+  const [milestoneForm, setMilestoneForm] = useState({
+    founderId: "",
+    kpiName: "",
+    targetValue: 0,
+    unit: "",
+    equityPercent: 0,
+  });
 
   function updateFounder(id: string, updates: Partial<Founder>) {
     setFounders(
@@ -98,6 +107,43 @@ export function Accountability({ founders, setFounders }: AccountabilityProps) {
     0
   );
   const bonusPoolRemaining = BONUS_POOL_TOTAL - totalBonusAwarded;
+
+  function addMilestone(founderId: string, kpiName: string, targetValue: number, unit: string, equityPercent: number) {
+    const founder = founders.find((f) => f.id === founderId);
+    if (!founder) return;
+    const milestone = {
+      id: crypto.randomUUID(),
+      kpiName,
+      targetValue,
+      unit,
+      equityPercent,
+      achieved: false,
+    };
+    updateFounder(founderId, {
+      equityMilestones: [...(founder.equityMilestones || []), milestone],
+    } as Partial<Founder>);
+    setMilestoneForm({ founderId: "", kpiName: "", targetValue: 0, unit: "", equityPercent: 0 });
+  }
+
+  function achieveMilestone(founderId: string, milestoneId: string) {
+    const founder = founders.find((f) => f.id === founderId);
+    if (!founder) return;
+    const milestones = (founder.equityMilestones || []).map((m) =>
+      m.id === milestoneId ? { ...m, achieved: true, achievedDate: new Date().toISOString() } : m
+    );
+    const lockedTotal = milestones
+      .filter((m) => m.achieved)
+      .reduce((sum, m) => sum + m.equityPercent, 0);
+    updateFounder(founderId, {
+      equityMilestones: milestones,
+      lockedEquity: lockedTotal,
+    } as Partial<Founder>);
+  }
+
+  const totalLockedEquity = founders.reduce(
+    (sum, f) => sum + (f.lockedEquity || 0),
+    0
+  );
 
   return (
     <div className="space-y-6">
@@ -368,6 +414,192 @@ export function Accountability({ founders, setFounders }: AccountabilityProps) {
               </div>
             </>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Milestone Equity Lock-In */}
+      <Card className="border-blue-200 dark:border-blue-800">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Lock className="h-5 w-5 text-blue-500" />
+            Milestone Equity Lock-In
+          </CardTitle>
+          <CardDescription>
+            When founders hit big numbers, their equity locks in permanently — can&apos;t be clawed back even if they leave.
+            Total locked: <span className="font-mono font-bold">{totalLockedEquity.toFixed(1)}%</span>
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="p-3 bg-blue-500/5 border border-blue-500/20 rounded-lg text-xs space-y-1">
+            <p className="font-medium">How lock-in works:</p>
+            <p>1. Define a milestone with a hard number (e.g., &quot;10,000 paid users&quot;)</p>
+            <p>2. Attach equity % to that milestone (e.g., &quot;locks in 5%&quot;)</p>
+            <p>3. When achieved + verified by the board, equity is <span className="font-bold">permanently locked</span></p>
+            <p>4. Locked equity survives departure — even bad leaver keeps locked shares</p>
+            <p>5. Unvested equity beyond locked amount follows normal vesting rules</p>
+            <p className="mt-2 text-muted-foreground italic">Example: Founder requests 20%. If they lock 10% via milestones then leave, they keep 10% locked + whatever time-vested from remaining 10%.</p>
+          </div>
+
+          {/* Per-founder milestone status */}
+          {founders.map((f) => {
+            const milestones = f.equityMilestones || [];
+            const lockedTotal = milestones.filter((m) => m.achieved).reduce((s, m) => s + m.equityPercent, 0);
+            const pendingTotal = milestones.filter((m) => !m.achieved).reduce((s, m) => s + m.equityPercent, 0);
+
+            return (
+              <div key={f.id} className="p-4 rounded-lg border">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <p className="font-medium">{f.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Requesting {f.requestedEquity || 0}% — Locked: {lockedTotal.toFixed(1)}% — Pending: {pendingTotal.toFixed(1)}%
+                    </p>
+                  </div>
+                  {lockedTotal > 0 && (
+                    <Badge className="bg-blue-500/20 text-blue-600 border-blue-500/30">
+                      <Lock className="h-3 w-3 mr-1" />
+                      {lockedTotal.toFixed(1)}% Locked
+                    </Badge>
+                  )}
+                </div>
+
+                {milestones.length > 0 && (
+                  <div className="space-y-2 mt-3">
+                    {milestones.map((m) => (
+                      <div
+                        key={m.id}
+                        className={`flex items-center justify-between p-2 rounded border text-sm ${
+                          m.achieved
+                            ? "bg-blue-500/5 border-blue-500/30"
+                            : "bg-muted/50"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          {m.achieved ? (
+                            <Check className="h-4 w-4 text-blue-600" />
+                          ) : (
+                            <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/30" />
+                          )}
+                          <span className={m.achieved ? "text-blue-600 font-medium" : ""}>
+                            {m.kpiName}: {m.targetValue.toLocaleString()} {m.unit}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs">
+                            {m.equityPercent}%
+                          </span>
+                          {m.achieved ? (
+                            <Badge variant="outline" className="text-blue-600 text-xs">
+                              Locked {m.achievedDate && new Date(m.achievedDate).toLocaleDateString()}
+                            </Badge>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-6 text-xs"
+                              onClick={() => {
+                                if (confirm(`Confirm: ${f.name} achieved "${m.kpiName}: ${m.targetValue.toLocaleString()} ${m.unit}"? This permanently locks ${m.equityPercent}% equity.`)) {
+                                  achieveMilestone(f.id, m.id);
+                                }
+                              }}
+                            >
+                              <Lock className="h-3 w-3 mr-1" />
+                              Lock In
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {milestones.length === 0 && (
+                  <p className="text-xs text-muted-foreground mt-2">No milestones defined yet.</p>
+                )}
+              </div>
+            );
+          })}
+
+          <Separator />
+
+          {/* Add milestone form */}
+          <div className="space-y-3">
+            <Label className="font-medium">Add Lock-In Milestone</Label>
+            <div className="grid grid-cols-5 gap-2">
+              <div className="space-y-1">
+                <Label className="text-xs">Founder</Label>
+                <select
+                  className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                  value={milestoneForm.founderId}
+                  onChange={(e) => setMilestoneForm({ ...milestoneForm, founderId: e.target.value })}
+                >
+                  <option value="">Select...</option>
+                  {founders.map((f) => (
+                    <option key={f.id} value={f.id}>{f.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">KPI / Milestone</Label>
+                <Input
+                  placeholder="e.g. Paid users"
+                  value={milestoneForm.kpiName}
+                  onChange={(e) => setMilestoneForm({ ...milestoneForm, kpiName: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Target #</Label>
+                <Input
+                  type="number"
+                  placeholder="10000"
+                  value={milestoneForm.targetValue || ""}
+                  onChange={(e) => setMilestoneForm({ ...milestoneForm, targetValue: Number(e.target.value) })}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Unit</Label>
+                <Input
+                  placeholder="users"
+                  value={milestoneForm.unit}
+                  onChange={(e) => setMilestoneForm({ ...milestoneForm, unit: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Locks %</Label>
+                <Input
+                  type="number"
+                  step={0.5}
+                  min={0.5}
+                  max={20}
+                  placeholder="5"
+                  value={milestoneForm.equityPercent || ""}
+                  onChange={(e) => setMilestoneForm({ ...milestoneForm, equityPercent: Number(e.target.value) })}
+                />
+              </div>
+            </div>
+            <Button
+              size="sm"
+              disabled={
+                !milestoneForm.founderId ||
+                !milestoneForm.kpiName ||
+                milestoneForm.targetValue <= 0 ||
+                !milestoneForm.unit ||
+                milestoneForm.equityPercent <= 0
+              }
+              onClick={() =>
+                addMilestone(
+                  milestoneForm.founderId,
+                  milestoneForm.kpiName,
+                  milestoneForm.targetValue,
+                  milestoneForm.unit,
+                  milestoneForm.equityPercent
+                )
+              }
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Add Milestone
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>
