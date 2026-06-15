@@ -47,8 +47,8 @@ export function TransparencyDisclosure() {
             <p className="font-medium">Technology Stack:</p>
             <ul className="list-disc list-inside text-muted-foreground space-y-1">
               <li>Next.js 15 (App Router) deployed on Vercel</li>
-              <li>AI: Claude Opus 4 via Amazon Bedrock (multimodal — can analyze images)</li>
-              <li>Storage: Vercel Blob (shared JSON for all founders to collaborate)</li>
+              <li>AI: Claude Opus 4 (analysis/chat) + Claude 3.5 Haiku (quick tasks) via Amazon Bedrock</li>
+              <li>Storage: GitHub Gist (shared JSON for all founders to collaborate)</li>
               <li>UI: shadcn/ui + Tailwind CSS</li>
               <li>Charts: Recharts</li>
               <li>Validation: Zod schemas</li>
@@ -56,18 +56,31 @@ export function TransparencyDisclosure() {
           </div>
           <Separator />
           <div className="space-y-2">
+            <p className="font-medium">Company Mission Context:</p>
+            <p className="text-muted-foreground">
+              Posthuman Inc. builds <strong>AI-powered smart devices that track health and help people</strong>.
+              The algorithm gives extra weight to skills directly aligned with this mission (AI/ML, healthcare,
+              medical devices, HIPAA, FDA, IoT, security). Pure software development is weighted lower because
+              AI tools (Claude, etc.) can build most code in 2026.
+            </p>
+          </div>
+          <Separator />
+          <div className="space-y-2">
             <p className="font-medium">How the AI is prompted:</p>
             <p className="text-muted-foreground">
-              The AI receives a system prompt instructing it to act as an experienced startup advisor.
+              The AI receives a system prompt instructing it to act as an experienced startup advisor
+              with full knowledge of Posthuman&apos;s mission (AI health devices).
               It has access to all founder data (KPIs, contributions, skills, uploaded files) and is
               instructed to:
             </p>
             <ul className="list-disc list-inside text-muted-foreground space-y-1">
               <li>Evaluate equity fairness against the algorithm&apos;s calculated split</li>
-              <li>Challenge vague or unmeasurable KPIs</li>
-              <li>Flag overlapping responsibilities</li>
+              <li>Challenge vague or unmeasurable KPIs — demand hard numbers</li>
+              <li>Flag overlapping responsibilities and skill redundancy</li>
               <li>Recommend evidence-based roles (not accept self-declared titles)</li>
-              <li>Advise on protective legal clauses (vesting, non-compete, etc.)</li>
+              <li>Account for AI commoditization of software — pure code is worth less</li>
+              <li>Weight experience and mission-aligned skills appropriately</li>
+              <li>Auto-determine full-time/part-time from hours (35+ = full-time)</li>
               <li>Discuss consequences of failure to deliver</li>
             </ul>
           </div>
@@ -98,9 +111,9 @@ export function TransparencyDisclosure() {
         <CardContent className="space-y-4 text-sm">
           <div className="p-3 bg-muted rounded-lg font-mono text-xs space-y-2">
             <p className="font-medium text-foreground text-sm">Equity Formula:</p>
-            <p>Total Score = (Future KPI Score × 70%) + (Prior Contribution Score × 30%)</p>
-            <p>Equity % = (Founder Score ÷ Sum of All Founder Scores) × 85%</p>
-            <p>Remaining 15% = Employee Option Pool (ESOP)</p>
+            <p>founderScore = ((KPI Score × 70%) + (Contribution Score × 30%)) × Skills Multiplier</p>
+            <p>Equity % = (Founder Score ÷ Sum of All Scores) × 90%</p>
+            <p>Remaining 10% = Employee Option Pool (ESOP)</p>
           </div>
 
           <div className="space-y-2">
@@ -110,16 +123,16 @@ export function TransparencyDisclosure() {
             </div>
             <div className="grid grid-cols-2 gap-4 text-xs text-muted-foreground">
               <div>
-                <p className="font-medium text-foreground mb-1">Category Multipliers:</p>
+                <p className="font-medium text-foreground mb-1">Category Multipliers (AI-era adjusted):</p>
                 <ul className="space-y-0.5">
-                  <li>Revenue: 1.5×</li>
-                  <li>Fundraising: 1.4×</li>
-                  <li>Product: 1.3×</li>
-                  <li>Technical: 1.2×</li>
-                  <li>Leadership: 1.15×</li>
-                  <li>Marketing: 1.1×</li>
-                  <li>Operations: 1.0×</li>
-                  <li>Culture: 0.9×</li>
+                  <li>Revenue: <strong>1.6×</strong> — deals require humans</li>
+                  <li>Fundraising: <strong>1.5×</strong> — investor relationships</li>
+                  <li>Leadership: <strong>1.3×</strong> — strategy, decisions</li>
+                  <li>Marketing: <strong>1.2×</strong> — brand, growth</li>
+                  <li>Product: <strong>1.1×</strong> — strategy matters, building is easier</li>
+                  <li>Operations: <strong>1.0×</strong> — process, coordination</li>
+                  <li>Technical: <strong>0.9×</strong> — AI can write most code now</li>
+                  <li>Culture: <strong>0.85×</strong> — important but indirect</li>
                 </ul>
               </div>
               <div>
@@ -140,24 +153,72 @@ export function TransparencyDisclosure() {
 
           <div className="space-y-2">
             <p className="font-medium">Prior Contribution Scoring (30% weight):</p>
-            <div className="p-3 bg-muted rounded-lg font-mono text-xs">
-              score = typeWeight × log₂(hoursInvested + 1) × log₁₀(estimatedValue + 1) × 10
+            <div className="p-3 bg-muted rounded-lg font-mono text-xs space-y-1">
+              <p>contributionValue = (baseContributions + experienceBase) × experienceMultiplier</p>
+              <p>baseContributions = Σ(typeWeight × log₂(hours + 1) × log₁₀(value + 1) × 10)</p>
+              <p>experienceBase = log₂(years + 1) × 15</p>
+              <p>experienceMultiplier = 1 + (min(years, 20) / 40) → up to 1.5× for 20+ years</p>
             </div>
             <div className="text-xs text-muted-foreground">
-              <p className="font-medium text-foreground mb-1">Contribution Type Weights:</p>
+              <p className="font-medium text-foreground mb-1">Contribution Type Weights (AI-era adjusted):</p>
               <ul className="space-y-0.5">
-                <li>Execution (building, shipping): <strong>1.00×</strong></li>
-                <li>Technical Build: <strong>0.95×</strong></li>
-                <li>Revenue Generated: <strong>0.90×</strong></li>
-                <li>Capital Invested: <strong>0.85×</strong></li>
-                <li>IP Created: <strong>0.80×</strong></li>
-                <li>Domain Expertise: <strong>0.70×</strong></li>
-                <li>Team Recruited: <strong>0.65×</strong></li>
-                <li>Network Connections: <strong>0.50×</strong></li>
-                <li>Market Research: <strong>0.40×</strong></li>
+                <li>Revenue Generated: <strong>1.00×</strong> — hardest to automate</li>
+                <li>Execution (building, shipping): <strong>0.95×</strong></li>
+                <li>Capital Invested: <strong>0.90×</strong> — skin in the game</li>
+                <li>Team Recruited: <strong>0.85×</strong> — hiring is human</li>
+                <li>Network Connections: <strong>0.80×</strong> — relationships can&apos;t be AI-generated</li>
+                <li>Domain Expertise: <strong>0.75×</strong></li>
+                <li>IP Created: <strong>0.70×</strong></li>
+                <li>Technical Build: <strong>0.60×</strong> — AI can write code now</li>
+                <li>Market Research: <strong>0.50×</strong></li>
                 <li>Idea / Vision: <strong>0.30×</strong></li>
               </ul>
             </div>
+          </div>
+
+          <Separator />
+
+          <div className="space-y-2">
+            <p className="font-medium">Skills Multiplier (Mission Alignment):</p>
+            <div className="p-3 bg-muted rounded-lg font-mono text-xs space-y-1">
+              <p>skillsMultiplier = baseMult + missionBonus</p>
+              <p>baseMult = 1 + min(skillCount, 15) × 0.02 → up to 1.3× for 15+ skills</p>
+              <p>missionBonus = min(missionAlignedSkills, 10) × 0.03 → up to +0.3× extra</p>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Mission-aligned keywords: health, medical, clinical, HIPAA, FDA, device, IoT, hardware,
+              sensor, AI, ML, security, cybersecurity, firmware, wearable, biotech.
+              Skills that directly help build AI health devices get a bonus multiplier.
+            </p>
+          </div>
+
+          <Separator />
+
+          <div className="space-y-2">
+            <p className="font-medium">Experience Multiplier:</p>
+            <div className="p-3 bg-muted rounded-lg font-mono text-xs">
+              <p>experienceMultiplier = 1 + (min(years, 20) / 40)</p>
+              <p>5yr → 1.125× | 10yr → 1.25× | 15yr → 1.375× | 20yr → 1.5× (cap)</p>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Experience multiplies contributions — it doesn&apos;t replace them. A veteran with zero execution
+              gets minimal equity. But two founders with identical KPIs? The experienced one gets more because
+              they&apos;re more likely to deliver.
+            </p>
+          </div>
+
+          <Separator />
+
+          <div className="space-y-2">
+            <p className="font-medium">AI Commoditization Principle (2026):</p>
+            <p className="text-muted-foreground">
+              AI tools (Claude, GPT, etc.) can now build most software. The algorithm reflects this:
+              Technical category scores at 0.9× (not 1.2×) and technical_build contributions at 0.6×
+              (not 0.95×). Human-only skills — closing deals, raising capital, building relationships,
+              making strategic decisions — are relatively MORE valuable. Exception: healthcare compliance
+              (HIPAA, FDA), security architecture, and hardware/firmware still carry full weight because
+              AI cannot do these.
+            </p>
           </div>
 
           <Separator />
@@ -168,9 +229,21 @@ export function TransparencyDisclosure() {
               Startups are about what you&apos;re going to BUILD, not just what you&apos;ve done. A 70/30 split
               ensures founders are primarily judged on future commitments (which they can control going
               forward) while still crediting those who invested time, money, and effort before this agreement.
-              This is adjustable — if all founders agree that past contributions should weigh more,
-              the ratios can be changed.
+              Experience amplifies the contribution score via a multiplier (up to 1.5×).
             </p>
+          </div>
+
+          <Separator />
+
+          <div className="space-y-2">
+            <p className="font-medium">Commitment Status (Auto-Derived):</p>
+            <p className="text-muted-foreground">
+              Full-time/part-time is automatically determined from hours per week:
+            </p>
+            <ul className="list-disc list-inside text-muted-foreground space-y-0.5 text-xs">
+              <li>35+ hours/week = Full-time</li>
+              <li>&lt; 35 hours/week = Part-time (equity implications noted by AI)</li>
+            </ul>
           </div>
         </CardContent>
       </Card>
@@ -316,10 +389,11 @@ export function TransparencyDisclosure() {
             <div>
               <p className="font-medium">Revenue/fundraising category bias</p>
               <p className="text-muted-foreground text-xs">
-                The category multipliers give revenue (1.5×) and fundraising (1.4×) the highest
-                weights. This reflects market reality for most startups but may not apply to
-                non-profit, research, or pre-revenue deep-tech companies. Adjust expectations
-                for your specific context.
+                The category multipliers give revenue (1.6×) and fundraising (1.5×) the highest
+                weights. This reflects that Posthuman needs revenue and capital to survive, and
+                that AI cannot close deals. Technical work scores lowest (0.9×) because AI can
+                do most of it. This may undervalue founders doing genuinely novel technical work
+                that AI cannot replicate (hardware, firmware, medical devices).
               </p>
             </div>
           </div>
@@ -406,8 +480,12 @@ export function TransparencyDisclosure() {
               { before: "Ideas weighted at 0.15× (15%)", after: "Ideas weighted at 0.30× (30%)", reason: "15% was punitively low. Ideas that form the core business model deserve meaningful credit." },
               { before: "Equal splits flagged as 'critical' red flag", after: "Equal splits flagged as 'warning' with nuance", reason: "Equal splits can be genuinely fair. The tool should ask 'why?' not assume it's wrong." },
               { before: "Part-time = 'unacceptable, take advisor equity'", after: "Part-time acceptable pre-investment with milestone-gating", reason: "People have financial obligations. Part-time pre-funding is realistic; post-funding requires full-time." },
-              { before: "AI told to be 'hostile' toward ideas-only founders", after: "AI told to be 'firm but fair' — acknowledge value, ask for more", reason: "Hostility is not fairness. The AI should encourage execution without dismissing someone's contribution." },
-              { before: "Capital invested weighted only at 0.85×", after: "Kept at 0.85× (validated as fair)", reason: "Capital is real commitment but money alone shouldn't equal full execution credit. 0.85× properly reflects this." },
+              { before: "Technical Build weighted at 0.95×", after: "Technical Build reduced to 0.60×", reason: "In 2026, AI (Claude) can write most software. Code is no longer scarce. Human-only skills are more valuable." },
+              { before: "Technical category multiplier at 1.2×", after: "Technical reduced to 0.9×, Revenue raised to 1.6×", reason: "Reflects AI era: software is commoditized, relationships and revenue generation cannot be automated." },
+              { before: "15% Employee Option Pool", after: "10% Employee Option Pool, 90% Founder Pool", reason: "10% is standard for seed-stage with 5 founders. Founders split the 90%." },
+              { before: "Experience: tiny bonus (log2 × 5)", after: "Experience: meaningful multiplier (up to 1.5×)", reason: "21 years in healthcare should significantly boost equity. Experience de-risks the company." },
+              { before: "Skills: simple count-based bonus", after: "Skills: mission-aligned bonus (+3% per health/AI skill)", reason: "Posthuman builds AI health devices. Skills directly relevant to that mission should be weighted higher." },
+              { before: "Commitment status manually selected", after: "Auto-derived from hours (35+ = full-time)", reason: "Eliminates mismatches. The system decides based on actual hours committed." },
               { before: "No disclosure of AI prompting methodology", after: "Full transparency page with complete algorithm and prompt disclosure", reason: "Founders deserve to know exactly how the tool works and what assumptions it makes." },
             ].map((change, i) => (
               <div key={i} className="p-3 border rounded-lg space-y-1">
