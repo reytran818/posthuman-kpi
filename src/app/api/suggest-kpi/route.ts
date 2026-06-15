@@ -30,21 +30,7 @@ If it involves a deal or partnership, also include: "dealType":"equity_exchange 
 Rules: targetValue must be >0 single number. unit must be countable noun never a percentage. weight 1-100 based on value to company. Return ONLY the JSON.`,
     });
 
-    const text = await result.text;
-
-    const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      return new Response(JSON.stringify({ error: "AI did not return valid JSON", raw: cleaned.substring(0, 200) }), {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
-    const parsed = JSON.parse(jsonMatch[0]);
-    return new Response(JSON.stringify(parsed), {
-      headers: { "Content-Type": "application/json" },
-    });
+    return result.toTextStreamResponse();
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e);
     return new Response(JSON.stringify({ error: message }), {

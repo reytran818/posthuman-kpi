@@ -123,9 +123,16 @@ export function FounderSetup({
           role: founder.role,
         }),
       });
-      if (res.ok) {
-        const { reworded } = await res.json();
-        if (reworded) updateFounder(founderId, { resume: reworded });
+      if (res.ok && res.body) {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let reworded = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          reworded += decoder.decode(value, { stream: true });
+        }
+        if (reworded.trim()) updateFounder(founderId, { resume: reworded.trim() });
       }
     } catch { /* silent */ }
     finally { setRewordingResume(null); }
@@ -147,12 +154,19 @@ export function FounderSetup({
           role: founder?.role,
         }),
       });
-      if (res.ok) {
-        const { reworded } = await res.json();
-        if (reworded) {
+      if (res.ok && res.body) {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let reworded = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          reworded += decoder.decode(value, { stream: true });
+        }
+        if (reworded.trim()) {
           updateFounder(founderId, {
             contributions: (founder?.contributions || []).map((c) =>
-              c.id === contribId ? { ...c, description: reworded } : c
+              c.id === contribId ? { ...c, description: reworded.trim() } : c
             ),
           });
         }

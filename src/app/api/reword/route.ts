@@ -38,12 +38,7 @@ Return ONLY the rewritten single sentence, nothing else.`,
       prompt,
     });
 
-    const fullText = await result.text;
-    const cleaned = fullText.replace(/^["']|["']$/g, "").trim();
-
-    return new Response(JSON.stringify({ reworded: cleaned }), {
-      headers: { "Content-Type": "application/json" },
-    });
+    return result.toTextStreamResponse();
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e);
     return new Response(JSON.stringify({ error: message }), {

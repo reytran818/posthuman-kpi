@@ -237,28 +237,38 @@ export function KPIInput({ founders, setFounders, onComplete }: KPIInputProps) {
           existingKPIs,
         }),
       });
-      if (res.ok) {
-        const suggestion = await res.json();
-        if (suggestion.error) {
-          setAiReasoning(`Error: ${suggestion.error}`);
-          return;
+      if (res.ok && res.body) {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let text = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          text += decoder.decode(value, { stream: true });
         }
-        setKpiForm((prev) => ({
-          ...prev,
-          name: suggestion.name || prev.name,
-          description: suggestion.description || prev.description,
-          category: suggestion.category || prev.category,
-          targetValue: suggestion.targetValue || prev.targetValue,
-          unit: suggestion.unit || prev.unit,
-          weight: suggestion.weight || prev.weight,
-          timeframeMonths: suggestion.timeframeMonths || prev.timeframeMonths,
-          difficulty: suggestion.difficulty || prev.difficulty,
-          dealType: suggestion.dealType || "standard",
-          theyGet: suggestion.theyGet || "",
-          weGet: suggestion.weGet || "",
-          successCriteria: suggestion.successCriteria || "",
-        }));
-        setAiReasoning(suggestion.reasoning || "Generated successfully.");
+        const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+        const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const suggestion = JSON.parse(jsonMatch[0]);
+          setKpiForm((prev) => ({
+            ...prev,
+            name: suggestion.name || prev.name,
+            description: suggestion.description || prev.description,
+            category: suggestion.category || prev.category,
+            targetValue: suggestion.targetValue || prev.targetValue,
+            unit: suggestion.unit || prev.unit,
+            weight: suggestion.weight || prev.weight,
+            timeframeMonths: suggestion.timeframeMonths || prev.timeframeMonths,
+            difficulty: suggestion.difficulty || prev.difficulty,
+            dealType: suggestion.dealType || "standard",
+            theyGet: suggestion.theyGet || "",
+            weGet: suggestion.weGet || "",
+            successCriteria: suggestion.successCriteria || "",
+          }));
+          setAiReasoning(suggestion.reasoning || "Generated successfully.");
+        } else {
+          setAiReasoning(`Could not parse AI response: ${cleaned.substring(0, 100)}`);
+        }
       } else {
         const err = await res.text();
         setAiReasoning(`Failed (${res.status}): ${err.substring(0, 100)}`);
