@@ -34,6 +34,67 @@ interface AccountabilityProps {
 
 const BONUS_POOL_TOTAL = 5; // 5% total bonus pool
 
+const DEFAULT_MILESTONES = [
+  { id: "inv_safe", category: "Investor That Moved the Needle", description: "Intro → funded SAFE/round", percent: 1.0 },
+  { id: "inv_lead", category: "Investor That Moved the Needle", description: "Lead investor seed ($500K+)", percent: 2.0 },
+  { id: "inv_strategic", category: "Investor That Moved the Needle", description: "Strategic investor (YC, major partner)", percent: 1.5 },
+  { id: "user_2x", category: "User Growth (Above Plan)", description: "2x target users/month for 60 days", percent: 1.0 },
+  { id: "user_5x", category: "User Growth (Above Plan)", description: "5x target (viral breakout)", percent: 2.0 },
+  { id: "rev_10k", category: "Revenue Milestones", description: "First $10K MRR", percent: 0.5 },
+  { id: "rev_50k", category: "Revenue Milestones", description: "First $50K MRR", percent: 1.0 },
+  { id: "rev_100k", category: "Revenue Milestones", description: "First $100K MRR", percent: 1.5 },
+];
+
+function BonusMilestoneEditor({ pool, awarded }: { pool: number; awarded: number }) {
+  const [milestones, setMilestones] = useState(DEFAULT_MILESTONES);
+  const totalAllocated = milestones.reduce((sum, m) => sum + m.percent, 0);
+  const available = pool - awarded;
+  const overBudget = totalAllocated > available;
+
+  const categories = [...new Set(milestones.map((m) => m.category))];
+
+  return (
+    <div className="space-y-3">
+      {categories.map((cat) => (
+        <div key={cat} className="p-2 bg-background rounded border">
+          <p className="font-medium text-sm mb-2">{cat}</p>
+          {milestones
+            .filter((m) => m.category === cat)
+            .map((m) => (
+              <div key={m.id} className="flex items-center gap-2 mb-1">
+                <span className="text-xs flex-1">{m.description}</span>
+                <span className="text-xs text-muted-foreground">→</span>
+                <Input
+                  type="number"
+                  step={0.25}
+                  min={0}
+                  max={5}
+                  className="w-16 h-6 text-xs text-center p-1"
+                  value={m.percent}
+                  onChange={(e) =>
+                    setMilestones((prev) =>
+                      prev.map((p) =>
+                        p.id === m.id ? { ...p, percent: Number(e.target.value) } : p
+                      )
+                    )
+                  }
+                />
+                <span className="text-xs">%</span>
+              </div>
+            ))}
+        </div>
+      ))}
+      <div className={`flex items-center justify-between p-2 rounded text-xs font-medium ${overBudget ? "bg-destructive/10 text-destructive" : "bg-green-500/10 text-green-600"}`}>
+        <span>Total allocated from {pool}% pool:</span>
+        <span className="font-mono">{totalAllocated.toFixed(2)}% / {available.toFixed(2)}% available</span>
+      </div>
+      {overBudget && (
+        <p className="text-xs text-destructive">⚠ Allocated milestones exceed available pool by {(totalAllocated - available).toFixed(2)}%</p>
+      )}
+    </div>
+  );
+}
+
 export function Accountability({ founders, setFounders }: AccountabilityProps) {
   const [warningForm, setWarningForm] = useState({ founderId: "", reason: "" });
   const [bonusForm, setBonusForm] = useState({ founderId: "", description: "", amount: 0.5 });
@@ -308,29 +369,8 @@ export function Accountability({ founders, setFounders }: AccountabilityProps) {
                 <p className="mt-1 text-muted-foreground italic">Measured by: signed contract + UTM-tracked signups/purchases attributed to that celebrity. &quot;Interest&quot; or DMs do not count. Investment = wire received in company bank account.</p>
                 <p className="mt-1 text-xs text-blue-500">This does NOT come from the bonus pool. It permanently protects the founder&apos;s existing equity from clawback.</p>
               </div>
-              <div className="p-2 bg-background rounded border">
-                <p className="font-medium text-sm">Investor That Moved the Needle</p>
-                <p className="text-muted-foreground">Bringing in an investor whose money/involvement materially changed the company trajectory.</p>
-                <p className="mt-1">• Intro that leads to signed + funded SAFE/round → 1.0%</p>
-                <p>• Lead investor for seed round ($500K+) → 2.0%</p>
-                <p>• Strategic investor (opens doors: YC, major partner, distribution) → 1.5%</p>
-                <p className="mt-1 text-muted-foreground italic">Measured by: wire received in company bank account. &quot;Committed&quot; = money in, not verbal interest. The person who made the intro AND shepherded the close gets credit.</p>
-              </div>
-              <div className="p-2 bg-background rounded border">
-                <p className="font-medium text-sm">User Growth (Above Plan)</p>
-                <p className="text-muted-foreground">Driving user numbers significantly above the agreed target.</p>
-                <p className="mt-1">• 2x target users/month sustained for 60 days → 1.0%</p>
-                <p>• 5x target (viral event / breakout) → 2.0%</p>
-                <p className="mt-1 text-muted-foreground italic">Measured by: billing system active user count (not downloads, not signups — active users who completed onboarding). Sustained = 60+ consecutive days.</p>
-              </div>
-              <div className="p-2 bg-background rounded border">
-                <p className="font-medium text-sm">Revenue Milestones</p>
-                <p className="text-muted-foreground">Revenue achievements outside normal responsibilities.</p>
-                <p className="mt-1">• First $10K MRR → 0.5% (split among drivers)</p>
-                <p>• First $50K MRR → 1.0% (split among drivers)</p>
-                <p>• First $100K MRR → 1.5% (split among drivers)</p>
-                <p className="mt-1 text-muted-foreground italic">Measured by: Stripe/bank revenue, not projections or LOIs.</p>
-              </div>
+
+              <BonusMilestoneEditor pool={BONUS_POOL_TOTAL} awarded={totalBonusAwarded} />
             </div>
             <Separator className="my-3" />
             <p className="font-medium">Rules (non-negotiable):</p>
