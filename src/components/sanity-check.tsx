@@ -131,6 +131,22 @@ export function SanityCheck({ founders }: SanityCheckProps) {
     // 10. Vesting
     checks.push({ label: "Vesting Schedule", severity: "pass", detail: "4-year vesting with 1-year cliff recommended (standard)" });
 
+    // 10b. AI Commoditization — technical-heavy founders
+    for (const f of founders) {
+      const techKPIs = f.kpis.filter((k) => k.category === "technical");
+      const totalKPIs = f.kpis.length;
+      if (totalKPIs > 0 && techKPIs.length / totalKPIs > 0.6) {
+        checks.push({ label: `${f.name} AI-Replaceable Risk`, severity: "warn", detail: `${techKPIs.length}/${totalKPIs} KPIs are "technical" — AI (Claude) can build most software now. Technical category scores at 0.9× vs revenue at 1.6×. Add non-technical KPIs or reframe as architecture/strategy.` });
+      }
+    }
+    const totalTechKPIs = founders.reduce((s, f) => s + f.kpis.filter((k) => k.category === "technical").length, 0);
+    const totalAllKPIs = founders.reduce((s, f) => s + f.kpis.length, 0);
+    if (totalAllKPIs > 0 && totalTechKPIs / totalAllKPIs > 0.4) {
+      checks.push({ label: "Company Technical Dependency", severity: "warn", detail: `${totalTechKPIs}/${totalAllKPIs} KPIs (${Math.round(totalTechKPIs/totalAllKPIs*100)}%) are technical — in the AI era, this is risky. Software is commoditized. Diversify into revenue, partnerships, and fundraising.` });
+    } else if (totalAllKPIs > 0) {
+      checks.push({ label: "AI Era Balance", severity: "pass", detail: `Technical KPIs are ${Math.round(totalTechKPIs/totalAllKPIs*100)}% of total — good balance. Algorithm weights human-only skills (revenue, fundraising, leadership) higher.` });
+    }
+
     // 11. Revenue/fundraising coverage
     const hasRevenue = founders.some((f) => f.kpis.some((k) => k.category === "revenue"));
     const hasFundraising = founders.some((f) => f.kpis.some((k) => k.category === "fundraising"));

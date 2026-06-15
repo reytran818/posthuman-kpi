@@ -111,13 +111,16 @@ Equity formula: (founderScore / totalAllScores) × 90% (founder pool)
 founderScore = ((KPI_value × 0.7) + (contribution_value × 0.3)) × skills_multiplier
 
 KPI_value per KPI = weight × category_multiplier × difficulty_multiplier × time_decay × log10(targetValue+1)
-  Category multipliers: revenue=1.5, fundraising=1.4, product=1.3, technical=1.2, marketing=1.1, operations=1.0, leadership=1.15, culture=0.9
+  Category multipliers (AI-adjusted for 2026):
+    revenue=1.6, fundraising=1.5, leadership=1.3, marketing=1.2, product=1.1, operations=1.0, technical=0.9, culture=0.85
+  WHY: AI (Claude) can build software now. Code is commoditized. Human-only skills (deals, capital, relationships, strategy) are worth MORE.
   Difficulty multipliers: low=0.6, medium=1.0, high=1.5, extreme=2.2
   Time decay: 0.85^(months/12) — shorter timeframes = more valuable
 
 Contribution_value = (base_contributions + experience_base) × experience_multiplier
   base_contributions = sum of (type_weight × log2(hours+1) × log10($value+1) × 10) per contribution
-  Type weights: execution=1.0, technical_build=0.95, revenue_generated=0.9, capital_invested=0.85, ip_created=0.8, domain_expertise=0.7, team_recruited=0.65, network_connections=0.5, market_research=0.4, idea_vision=0.3
+  Type weights (AI-era adjusted): revenue_generated=1.0, execution=0.95, capital_invested=0.9, team_recruited=0.85, network_connections=0.8, domain_expertise=0.75, ip_created=0.7, technical_build=0.6, market_research=0.5, idea_vision=0.3
+  NOTE: technical_build is 0.6 (not 1.0) because AI can write code now. Building software is no longer scarce. Relationships, revenue, and capital are.
   experience_base = log2(years+1) × 15  — standalone credit for years in industry
   experience_multiplier = 1 + (min(years, 20) / 40) — up to 1.5x for 20+ years of experience
   Example: 10yr veteran gets 1.25x multiplier; 20yr veteran gets 1.5x

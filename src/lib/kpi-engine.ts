@@ -129,16 +129,19 @@ export const FounderSchema = z.object({
 export type Founder = z.infer<typeof FounderSchema>;
 
 // --- Value multipliers ---
+// Adjusted for 2026 reality: AI (Claude, etc.) can build software,
+// so pure technical/product execution is less scarce. Human-only skills
+// (relationships, capital, strategy, leadership) are MORE valuable.
 
 const CATEGORY_VALUE_MULTIPLIERS: Record<KPICategory, number> = {
-  revenue: 1.5,
-  fundraising: 1.4,
-  product: 1.3,
-  technical: 1.2,
-  marketing: 1.1,
-  operations: 1.0,
-  leadership: 1.15,
-  culture: 0.9,
+  revenue: 1.6,        // deals, sales, partnerships — requires humans
+  fundraising: 1.5,    // investor relationships — pure human skill
+  leadership: 1.3,     // strategy, decision-making, team alignment
+  marketing: 1.2,      // brand, growth, creative direction
+  product: 1.1,        // product STRATEGY still matters, but building is easier
+  operations: 1.0,     // process, hiring, coordination
+  technical: 0.9,      // code/architecture — AI can do most of this now
+  culture: 0.85,       // important but least directly tied to value
 };
 
 const DIFFICULTY_MULTIPLIERS: Record<string, number> = {
@@ -150,20 +153,21 @@ const DIFFICULTY_MULTIPLIERS: Record<string, number> = {
 
 /**
  * Contribution type weights.
- * Execution-oriented contributions are weighted significantly higher than ideas.
- * This reflects the principle that execution creates enterprise value.
+ * Adjusted for AI era: code/technical builds are less scarce since AI can write code.
+ * Human-only skills (revenue, capital, recruiting, network) are relatively more valuable.
+ * Strategic execution (closing deals, hiring, fundraising) outweighs building features.
  */
 const CONTRIBUTION_TYPE_WEIGHTS: Record<ContributionType, number> = {
-  execution: 1.0,
-  technical_build: 0.95,
-  revenue_generated: 0.9,
-  capital_invested: 0.85,
-  ip_created: 0.8,
-  domain_expertise: 0.7,
-  team_recruited: 0.65,
-  network_connections: 0.5,
-  market_research: 0.4,
-  idea_vision: 0.3,
+  revenue_generated: 1.0,    // hardest to replicate with AI
+  execution: 0.95,           // general business execution
+  capital_invested: 0.9,     // money in = skin in the game
+  team_recruited: 0.85,      // hiring is a human skill
+  network_connections: 0.8,  // relationships can't be AI-generated
+  domain_expertise: 0.75,    // knowing the space deeply
+  ip_created: 0.7,           // patents, proprietary research
+  technical_build: 0.6,      // code — AI can write most of this now
+  market_research: 0.5,      // AI can assist heavily here too
+  idea_vision: 0.3,          // ideas remain cheap without execution
 };
 
 const TIMEFRAME_DECAY = 0.85;

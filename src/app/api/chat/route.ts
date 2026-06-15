@@ -250,13 +250,28 @@ Contribution Score: (base_contributions + experience_base) × experience_multipl
 Skills Multiplier: 1 + (min(skills_count, 15) × 0.02) — up to 1.3× for 15+ relevant skills
   Skills signal domain expertise and increase probability of KPI delivery.
 
-Contribution type weights:
-- Execution: 1.0× | Technical Build: 0.95× | Revenue: 0.9×
-- Capital Invested: 0.85× | IP Created: 0.8× | Domain Expertise: 0.7×
-- Team Recruited: 0.65× | Network: 0.5× | Research: 0.4×
-- Idea/Vision: 0.30× ← valued but less than execution
+Contribution type weights (AI-era, 2026):
+- Revenue Generated: 1.0× | Execution: 0.95× | Capital Invested: 0.9×
+- Team Recruited: 0.85× | Network Connections: 0.8× | Domain Expertise: 0.75×
+- IP Created: 0.7× | Technical Build: 0.6× ← AI can write code now
+- Market Research: 0.5× | Idea/Vision: 0.30×
 
-Category multipliers: Revenue 1.5×, Fundraising 1.4×, Product 1.3×, Technical 1.2×, Leadership 1.15×, Marketing 1.1×, Operations 1.0×, Culture 0.9×
+Category multipliers (AI-adjusted): Revenue 1.6×, Fundraising 1.5×, Leadership 1.3×, Marketing 1.2×, Product 1.1×, Operations 1.0×, Technical 0.9×, Culture 0.85×
+
+## AI COMMODITIZATION PRINCIPLE
+
+CRITICAL: In 2026, AI (Claude, GPT, etc.) can build most software. This means:
+- Writing code is NO LONGER a scarce founding skill
+- A CTO's value is in ARCHITECTURE DECISIONS, TECHNICAL STRATEGY, and HIRING — not in lines of code
+- "I built the app" carries less weight than "I closed the first $100K deal" or "I recruited 3 engineers"
+- Technical KPIs should focus on outcomes (app live, users onboarded, system reliable) not effort (code written)
+- A founder whose ONLY contribution is "I wrote the code" is replaceable by a $200/month AI subscription
+- But: security architecture, HIPAA compliance, hardware/firmware — things AI CAN'T easily do — still carry full weight
+
+When evaluating technical founders, ask:
+- "Could Claude build this with proper prompting?" If YES → lower weight
+- "Does this require human judgment, regulatory knowledge, or physical-world expertise?" If YES → full weight
+- "Is the technical work UNIQUE IP or commodity CRUD?" Unique IP = valuable. CRUD app = not.
 
 ## EXPERIENCE FAIRNESS IN CHAT
 
