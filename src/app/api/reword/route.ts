@@ -30,6 +30,16 @@ Return ONLY the rewritten single sentence, nothing else.`,
 Contribution: "${text}"
 
 Return ONLY a single number in dollars (no $ sign, no commas, no explanation). Just the number. For example: 15000`,
+    extract_skills: `Extract the most relevant professional skills from this founder's resume/background. Return 8-15 skills as a simple list, one per line. Focus on concrete, specific skills that matter for a startup — not generic ones like "leadership" or "communication."
+
+Founder: ${founderName || "Unknown"} (${role || "Founder"})
+Resume:
+"${text}"
+
+Return ONLY the skills list, one skill per line. No numbers, no bullets, no explanation. Example:
+Machine Learning
+React / Next.js
+Sales & Revenue Growth`,
   };
 
   const prompt = prompts[type] || prompts.contribution;

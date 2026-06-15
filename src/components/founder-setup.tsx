@@ -114,6 +114,7 @@ export function FounderSetup({
     if (!founder?.resume) return;
     setRewordingResume(founderId);
     try {
+      // Reword resume
       const res = await fetch("/api/reword", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -134,6 +135,32 @@ export function FounderSetup({
           reworded += decoder.decode(value, { stream: true });
         }
         if (reworded.trim()) updateFounder(founderId, { resume: reworded.trim() });
+      }
+
+      // Extract skills
+      const skillsRes = await fetch("/api/reword", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: founder.resume,
+          type: "extract_skills",
+          founderName: founder.name,
+          role: founder.role,
+        }),
+      });
+      if (skillsRes.ok && skillsRes.body) {
+        const reader = skillsRes.body.getReader();
+        const decoder = new TextDecoder();
+        let skillsText = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          skillsText += decoder.decode(value, { stream: true });
+        }
+        const skills = skillsText.trim().split("\n").map((s) => s.replace(/^[-•*]\s*/, "").trim()).filter(Boolean);
+        if (skills.length > 0) {
+          updateFounder(founderId, { relevantSkills: skills });
+        }
       }
     } catch { /* silent */ }
     finally { setRewordingResume(null); }
