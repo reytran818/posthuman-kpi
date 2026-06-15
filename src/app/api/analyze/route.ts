@@ -4,12 +4,56 @@ import { bedrock } from "@ai-sdk/amazon-bedrock";
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
-  const { founders } = await req.json();
+  const { founders, analysisType, kpiData } = await req.json();
 
   if (!founders || founders.length === 0) {
     return new Response(JSON.stringify({ analysis: "No founder data to analyze." }), {
       headers: { "Content-Type": "application/json" },
     });
+  }
+
+  if (analysisType === "flag-vague-kpis") {
+    const founder = founders[0];
+    const kpis = kpiData || founder.kpis;
+    const kpiList = kpis.map((k: Record<string, unknown>, i: number) =>
+      `${i + 1}. "${k.name}" — target: ${k.targetValue} ${k.unit} in ${k.timeframeMonths}mo, weight: ${k.weight}\n   Description: "${k.description || "(none)"}"`
+    ).join("\n");
+
+    const result = streamText({
+      model: bedrock("us.anthropic.claude-3-5-haiku-20241022-v1:0"),
+      system: `You are a strict KPI quality reviewer for a founders agreement. Your job is to flag ANY vague, unmeasurable, or weak KPIs.
+
+A KPI is VAGUE if:
+- Target value is 1 with a binary outcome (done/not done) instead of a gradient metric
+- It measures activity rather than results (e.g., "publishing cadence" vs "10,000 subscribers")
+- The unit is compound (e.g., "brand + site live" bundles two things)
+- Description lacks specific numbers, dollar amounts, or deadlines
+- Success is subjective and not independently verifiable
+- It uses weasel words: "in negotiation", "tracked", "direction", "logged", "readiness"
+- Any human reading it would say "but how do we MEASURE that objectively?"
+
+A GOOD KPI has:
+- A specific numerical target that's either hit or not
+- A clear measurement method (billing system, analytics, signed contracts)
+- An outcome, not an activity
+- One thing measured (not bundled)
+
+For EACH KPI, output EXACTLY:
+KPI_NAME: [PASS or VAGUE]
+- issue 1 (if vague)
+- issue 2 (if vague)
+- → Suggested fix: [concrete rewrite]
+
+Be aggressive. Flag anything that wouldn't hold up in a legal dispute between co-founders.`,
+      messages: [
+        {
+          role: "user",
+          content: `Review these KPIs for ${founder.name} (${founder.role}, ${founder.hoursPerWeek || 0}h/wk):\n\n${kpiList}`,
+        },
+      ],
+    });
+
+    return result.toTextStreamResponse();
   }
 
   const totalRequestedEquity = founders.reduce(
@@ -98,6 +142,39 @@ export async function POST(req: Request) {
       }
     }
     context += `\n`;
+  }
+
+  if (analysisType === "recommendations") {
+    const result = streamText({
+      model: bedrock("us.anthropic.claude-3-5-haiku-20241022-v1:0"),
+      system: `You are an equity advisor for a startup founders agreement. Provide specific, actionable recommendations.
+
+Format your response in these sections:
+## SUMMARY
+One paragraph overview of the current state.
+
+## FOUNDER-SPECIFIC
+### [Founder Name]
+- recommendation 1
+- recommendation 2
+
+### [Next Founder]
+- ...
+
+## COMPANY-WIDE
+- recommendation applying to the whole team
+
+## NEXT STEPS
+- numbered action items in priority order`,
+      messages: [
+        {
+          role: "user",
+          content: `Analyze and provide recommendations for these founders:\n\n${context}`,
+        },
+      ],
+    });
+
+    return result.toTextStreamResponse();
   }
 
   const result = streamText({

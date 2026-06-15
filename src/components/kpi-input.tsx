@@ -57,6 +57,25 @@ function validateKPIHardNumbers(kpi: { name: string; description: string; target
   if (/\b(percentage|%|percent)\b/i.test(kpi.unit) && kpi.targetValue <= 0) {
     issues.push("Percentages need a concrete base number");
   }
+  // Detect binary KPIs disguised as metrics (target = 1 with non-countable units)
+  if (kpi.targetValue === 1 && !/\b(contracts?|hires?|apps?|products?|deals?)\b/i.test(kpi.unit)) {
+    const binaryUnits = /(live|launched|completed|done|ready|finished|published|delivered|set up|built|created|onboarded)/i;
+    if (binaryUnits.test(kpi.unit) || binaryUnits.test(text)) {
+      issues.push("Binary deliverable (done/not done) — add measurable success criteria (e.g., revenue, users, engagement)");
+    }
+  }
+  // Detect compound units that bundle multiple things
+  if (/\+/.test(kpi.unit) || /\band\b/.test(kpi.unit)) {
+    issues.push("Compound unit — split into separate KPIs with individual targets");
+  }
+  // Detect vague descriptions without numbers
+  if (kpi.description.length > 0 && kpi.description.length < 30 && !/\d/.test(kpi.description)) {
+    issues.push("Description lacks specific numbers or deadlines");
+  }
+  // Detect non-outcome language (activities instead of results)
+  if (/\b(conversations? logged|tracking|publishing|cadence|direction|guide)\b/i.test(text) && kpi.targetValue <= 1) {
+    issues.push("Sounds like an activity, not an outcome — what's the measurable result?");
+  }
   return issues;
 }
 
@@ -90,6 +109,8 @@ export function KPIInput({ founders, setFounders, onComplete }: KPIInputProps) {
   const [aiReasoning, setAiReasoning] = useState("");
   const [showManualFields, setShowManualFields] = useState(false);
   const [bulkRegenerating, setBulkRegenerating] = useState(false);
+  const [aiFlags, setAiFlags] = useState<Record<string, string[]>>({});
+  const [flagging, setFlagging] = useState(false);
   const [kpiForm, setKpiForm] = useState({
     name: "",
     description: "",
@@ -315,6 +336,79 @@ export function KPIInput({ founders, setFounders, onComplete }: KPIInputProps) {
     }
   }
 
+  async function flagVagueKPIs() {
+    if (!activeFounder || activeFounder.kpis.length === 0) return;
+    setFlagging(true);
+    try {
+      const kpiSummary = activeFounder.kpis.map((k) => ({
+        id: k.id,
+        name: k.name,
+        description: k.description,
+        targetValue: k.targetValue,
+        unit: k.unit,
+        weight: k.weight,
+        timeframeMonths: k.timeframeMonths,
+      }));
+
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          founders: [activeFounder],
+          analysisType: "flag-vague-kpis",
+          kpiData: kpiSummary,
+        }),
+      });
+
+      if (res.ok && res.body) {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let text = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          text += decoder.decode(value, { stream: true });
+        }
+
+        const newFlags: Record<string, string[]> = {};
+        for (const kpi of activeFounder.kpis) {
+          const regex = new RegExp(`(?:${kpi.name}|${kpi.id})[^\\n]*\\n([\\s\\S]*?)(?=\\n(?:[A-Z]|$|\\d+\\.|---))`, "i");
+          const match = text.match(regex);
+          if (match) {
+            const issues = match[1]
+              .split("\n")
+              .filter((l) => l.trim().startsWith("-") || l.trim().startsWith("•"))
+              .map((l) => l.replace(/^[-•*]\s*/, "").trim())
+              .filter(Boolean);
+            if (issues.length > 0) newFlags[kpi.id] = issues;
+          }
+        }
+
+        // Fallback: parse line-by-line for "KPI_NAME: issue" pattern
+        if (Object.keys(newFlags).length === 0) {
+          const lines = text.split("\n");
+          for (const line of lines) {
+            for (const kpi of activeFounder.kpis) {
+              if (line.toLowerCase().includes(kpi.name.toLowerCase()) && (line.includes("⚠") || line.includes("vague") || line.includes("unclear") || line.includes("binary") || line.includes("not measurable") || line.includes("missing") || line.includes("→"))) {
+                const issue = line.replace(/^[-•*\d.)\s]+/, "").trim();
+                if (issue.length > 10) {
+                  if (!newFlags[kpi.id]) newFlags[kpi.id] = [];
+                  newFlags[kpi.id].push(issue);
+                }
+              }
+            }
+          }
+        }
+
+        setAiFlags(newFlags);
+      }
+    } catch {
+      // silent
+    } finally {
+      setFlagging(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between">
@@ -330,7 +424,7 @@ export function KPIInput({ founders, setFounders, onComplete }: KPIInputProps) {
             All KPIs must have hard numbers — no placeholders, no vague language, no &quot;try to.&quot;
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {hasAnyKPIs && (
             <Button
               variant="secondary"
@@ -340,6 +434,17 @@ export function KPIInput({ founders, setFounders, onComplete }: KPIInputProps) {
             >
               <Sparkles className={`h-4 w-4 ${bulkRegenerating ? "animate-spin" : ""}`} />
               {bulkRegenerating ? "Regenerating all..." : "Regenerate All KPIs with AI"}
+            </Button>
+          )}
+          {activeFounder && activeFounder.kpis.length > 0 && (
+            <Button
+              variant="outline"
+              onClick={flagVagueKPIs}
+              disabled={flagging}
+              className="gap-2 border-orange-500/50 text-orange-600 hover:bg-orange-50"
+            >
+              <AlertTriangle className={`h-4 w-4 ${flagging ? "animate-pulse" : ""}`} />
+              {flagging ? "Analyzing..." : "AI Flag Vague KPIs"}
             </Button>
           )}
           <Button
@@ -1048,6 +1153,16 @@ export function KPIInput({ founders, setFounders, onComplete }: KPIInputProps) {
                           <div className="mt-1 text-xs text-orange-500 space-y-0.5">
                             {issues.map((issue, i) => (
                               <p key={i}>⚠ {issue}</p>
+                            ))}
+                          </div>
+                        )}
+                        {aiFlags[kpi.id] && aiFlags[kpi.id].length > 0 && (
+                          <div className="mt-1 p-2 bg-purple-500/10 border border-purple-500/20 rounded text-xs space-y-0.5">
+                            <p className="font-medium text-purple-600 flex items-center gap-1">
+                              <Sparkles className="h-3 w-3" /> AI Flags:
+                            </p>
+                            {aiFlags[kpi.id].map((flag, i) => (
+                              <p key={i} className="text-purple-700/80">• {flag}</p>
                             ))}
                           </div>
                         )}
