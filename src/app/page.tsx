@@ -10,9 +10,10 @@ import { TransparencyDisclosure } from "@/components/transparency-disclosure";
 import { Operations } from "@/components/operations";
 import { Accountability } from "@/components/accountability";
 import { SanityCheck } from "@/components/sanity-check";
+import { Recommendations } from "@/components/recommendations";
 import { useSharedFounders } from "@/hooks/use-shared-founders";
 import { EMPLOYEE_OPTION_POOL } from "@/lib/kpi-engine";
-import { Users, Target, BarChart3, RotateCcw, Cloud, Shield, Eye, Save, Wrench, RefreshCw, Scale, ClipboardCheck, AlertTriangle } from "lucide-react";
+import { Users, Target, BarChart3, RotateCcw, Cloud, Shield, Eye, Save, Wrench, RefreshCw, Scale, ClipboardCheck, AlertTriangle, Lightbulb } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function Home() {
@@ -143,7 +144,7 @@ export default function Home() {
           </div>
         )}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-8">
+          <TabsList className="grid w-full grid-cols-9">
             <TabsTrigger value="founders" className="gap-2">
               <Users className="h-4 w-4" />
               Founders
@@ -163,6 +164,14 @@ export default function Home() {
             >
               <BarChart3 className="h-4 w-4" />
               Results
+            </TabsTrigger>
+            <TabsTrigger
+              value="recommendations"
+              className="gap-2"
+              disabled={founders.every((f) => f.kpis.length === 0)}
+            >
+              <Lightbulb className="h-4 w-4" />
+              Recs
             </TabsTrigger>
             <TabsTrigger
               value="sanity"
@@ -224,6 +233,10 @@ export default function Home() {
 
           <TabsContent value="sanity" className="mt-6">
             <SanityCheck founders={founders} />
+          </TabsContent>
+
+          <TabsContent value="recommendations" className="mt-6">
+            <Recommendations founders={founders} />
           </TabsContent>
 
           <TabsContent value="equity" className="mt-6">

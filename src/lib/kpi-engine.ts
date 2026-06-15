@@ -243,7 +243,7 @@ const MISSION_KEYWORDS = [
   "firmware", "embedded", "wearable", "biotech", "peptide",
 ];
 
-function skillsMultiplier(founder: Founder): number {
+export function skillsMultiplier(founder: Founder): number {
   const skills = founder.relevantSkills || [];
   const count = skills.length;
   if (count === 0) return 1.0;
