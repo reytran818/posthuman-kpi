@@ -7,12 +7,14 @@ import { KPIInput } from "@/components/kpi-input";
 import { ResultsDashboard } from "@/components/results-dashboard";
 import { LegalFramework } from "@/components/legal-framework";
 import { TransparencyDisclosure } from "@/components/transparency-disclosure";
+import { Operations } from "@/components/operations";
+import { Accountability } from "@/components/accountability";
 import { useSharedFounders } from "@/hooks/use-shared-founders";
-import { Users, Target, BarChart3, RotateCcw, Cloud, Shield, Eye, Save } from "lucide-react";
+import { Users, Target, BarChart3, RotateCcw, Cloud, Shield, Eye, Save, Wrench, RefreshCw, Scale } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function Home() {
-  const { founders, setFounders, isLoading, isSaving, lastSaved, saveNow, resetAll } =
+  const { founders, setFounders, isLoading, isSaving, lastSaved, saveNow, refresh, resetAll } =
     useSharedFounders();
   const [activeTab, setActiveTab] = useState("founders");
 
@@ -42,12 +44,22 @@ export default function Home() {
             <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
               <Cloud className="h-3.5 w-3.5 text-green-500" />
               <span>
-                {isSaving ? "Saving..." : "Synced"}
+                {isSaving ? "Saving..." : "Saved"}
                 {lastSaved && !isSaving && (
                   <> • {new Date(lastSaved).toLocaleTimeString()}</>
                 )}
               </span>
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={refresh}
+              disabled={isSaving}
+              title="Pull latest data from server"
+            >
+              <RefreshCw className="h-3.5 w-3.5 mr-1" />
+              Refresh
+            </Button>
             <Button
               variant="default"
               size="sm"
@@ -75,7 +87,7 @@ export default function Home() {
 
       <div className="mx-auto max-w-6xl px-6 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="founders" className="gap-2">
               <Users className="h-4 w-4" />
               Founders
@@ -97,12 +109,28 @@ export default function Home() {
               Results
             </TabsTrigger>
             <TabsTrigger
+              value="equity"
+              className="gap-2"
+              disabled={founders.length === 0}
+            >
+              <Scale className="h-4 w-4" />
+              Equity
+            </TabsTrigger>
+            <TabsTrigger
               value="legal"
               className="gap-2"
               disabled={founders.length === 0}
             >
               <Shield className="h-4 w-4" />
               Legal
+            </TabsTrigger>
+            <TabsTrigger
+              value="operations"
+              className="gap-2"
+              disabled={founders.length === 0}
+            >
+              <Wrench className="h-4 w-4" />
+              Ops
             </TabsTrigger>
             <TabsTrigger value="transparency" className="gap-2">
               <Eye className="h-4 w-4" />
@@ -130,8 +158,16 @@ export default function Home() {
             <ResultsDashboard founders={founders} />
           </TabsContent>
 
+          <TabsContent value="equity" className="mt-6">
+            <Accountability founders={founders} setFounders={setFounders} />
+          </TabsContent>
+
           <TabsContent value="legal" className="mt-6">
             <LegalFramework founders={founders} />
+          </TabsContent>
+
+          <TabsContent value="operations" className="mt-6">
+            <Operations founders={founders} setFounders={setFounders} />
           </TabsContent>
 
           <TabsContent value="transparency" className="mt-6">

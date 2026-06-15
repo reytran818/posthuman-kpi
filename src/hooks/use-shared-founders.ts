@@ -3,8 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { Founder } from "@/lib/kpi-engine";
 
-const POLL_INTERVAL = 5000;
-const SAVE_DEBOUNCE = 1000;
+const SAVE_DEBOUNCE = 3000;
 
 export function useSharedFounders() {
   const [founders, setFoundersLocal] = useState<Founder[]>([]);
@@ -13,41 +12,32 @@ export function useSharedFounders() {
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasLoaded = useRef(false);
-  const savingLock = useRef(false);
-  const lastFetchHash = useRef("");
   const currentFounders = useRef<Founder[]>([]);
 
-  async function fetchFounders() {
-    if (savingLock.current) return;
-    try {
-      const res = await fetch("/api/founders", { cache: "no-store" });
-      if (res.ok) {
-        const data = await res.json();
-        const hash = JSON.stringify(data);
-        if (hash !== lastFetchHash.current) {
-          lastFetchHash.current = hash;
-          setFoundersLocal(data);
-          currentFounders.current = data;
-        }
-        if (!hasLoaded.current) {
-          hasLoaded.current = true;
-        }
-      }
-    } catch {
-      // network error, keep local state
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
   useEffect(() => {
-    fetchFounders();
-    const interval = setInterval(fetchFounders, POLL_INTERVAL);
-    return () => clearInterval(interval);
+    let cancelled = false;
+    async function load() {
+      try {
+        const res = await fetch("/api/founders?t=" + Date.now(), { cache: "no-store" });
+        if (res.ok && !cancelled) {
+          const data = await res.json();
+          hasLoaded.current = true;
+          currentFounders.current = data;
+          setFoundersLocal(data);
+        }
+      } catch {
+        // network error
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }
+    load();
+    return () => { cancelled = true; };
   }, []);
 
   const persistToServer = useCallback(async (data: Founder[]) => {
-    savingLock.current = true;
+    if (!hasLoaded.current) return;
+    if (data.length === 0) return;
     setIsSavingState(true);
     try {
       const res = await fetch("/api/founders", {
@@ -58,12 +48,10 @@ export function useSharedFounders() {
       if (res.ok) {
         const result = await res.json();
         setLastSaved(result.updatedAt);
-        lastFetchHash.current = JSON.stringify(data);
       }
     } catch {
-      // will retry
+      // will retry on next change
     } finally {
-      savingLock.current = false;
       setIsSavingState(false);
     }
   }, []);
@@ -72,7 +60,7 @@ export function useSharedFounders() {
     setFoundersLocal((prev) => {
       const resolved = typeof newFounders === "function" ? newFounders(prev) : newFounders;
 
-      if (resolved.length === 0 && !hasLoaded.current) {
+      if (!hasLoaded.current && resolved.length === 0) {
         return prev;
       }
 
@@ -95,11 +83,25 @@ export function useSharedFounders() {
     await persistToServer(currentFounders.current);
   }, [persistToServer]);
 
+  const refresh = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch("/api/founders?t=" + Date.now(), { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        currentFounders.current = data;
+        setFoundersLocal(data);
+      }
+    } catch {
+      // keep local state
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   const resetAll = useCallback(async () => {
     setFoundersLocal([]);
     currentFounders.current = [];
-    lastFetchHash.current = JSON.stringify([]);
-    savingLock.current = true;
     setIsSavingState(true);
     try {
       await fetch("/api/founders", {
@@ -114,10 +116,9 @@ export function useSharedFounders() {
     } catch {
       // ignore
     } finally {
-      savingLock.current = false;
       setIsSavingState(false);
     }
   }, []);
 
-  return { founders, setFounders, isLoading, isSaving, lastSaved, saveNow, resetAll };
+  return { founders, setFounders, isLoading, isSaving, lastSaved, saveNow, refresh, resetAll };
 }

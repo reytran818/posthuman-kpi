@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import type { Founder, Contribution, ContributionType, Attachment } from "@/lib/kpi-engine";
+import type { Founder, Contribution, ContributionType, FutureContribution, Attachment } from "@/lib/kpi-engine";
 import { contributionToValue } from "@/lib/kpi-engine";
 import { FileUpload } from "@/components/file-upload";
 import {
@@ -59,7 +59,9 @@ export function FounderSetup({
 }: FounderSetupProps) {
   const [newName, setNewName] = useState("");
   const [newRole, setNewRole] = useState("");
-  const [expandedFounder, setExpandedFounder] = useState<string | null>(null);
+  const [expandedFounder, setExpandedFounder] = useState<string | null>(
+    founders[0]?.id || null
+  );
   const [newSkill, setNewSkill] = useState("");
 
   // Contribution form
@@ -70,6 +72,16 @@ export function FounderSetup({
     hoursInvested: 0,
   });
 
+  // Future contribution form
+  const [futureForm, setFutureForm] = useState({
+    description: "",
+    type: "execution" as ContributionType,
+    metric: "",
+    targetValue: 0,
+    unit: "",
+    deadline: "",
+  });
+
   function addFounder() {
     if (!newName.trim() || !newRole.trim()) return;
     const founder: Founder = {
@@ -78,6 +90,7 @@ export function FounderSetup({
       role: newRole.trim(),
       requestedEquity: 0,
       commitmentStatus: "full_time",
+      hoursPerWeek: 40,
       fullTimeDate: "",
       resume: "",
       yearsExperience: 0,
@@ -145,6 +158,48 @@ export function FounderSetup({
     updateFounder(founderId, {
       contributions: (founder.contributions || []).filter(
         (c) => c.id !== contribId
+      ),
+    });
+  }
+
+  function addFutureContribution(founderId: string) {
+    if (!futureForm.description.trim() || !futureForm.metric.trim()) return;
+    const founder = founders.find((f) => f.id === founderId);
+    if (!founder) return;
+    const newFuture: FutureContribution = {
+      id: crypto.randomUUID(),
+      ...futureForm,
+      status: "planned",
+    };
+    updateFounder(founderId, {
+      futureContributions: [...(founder.futureContributions || []), newFuture],
+    });
+    setFutureForm({
+      description: "",
+      type: "execution",
+      metric: "",
+      targetValue: 0,
+      unit: "",
+      deadline: "",
+    });
+  }
+
+  function removeFutureContribution(founderId: string, contribId: string) {
+    const founder = founders.find((f) => f.id === founderId);
+    if (!founder) return;
+    updateFounder(founderId, {
+      futureContributions: (founder.futureContributions || []).filter(
+        (c) => c.id !== contribId
+      ),
+    });
+  }
+
+  function updateFutureStatus(founderId: string, contribId: string, status: FutureContribution["status"]) {
+    const founder = founders.find((f) => f.id === founderId);
+    if (!founder) return;
+    updateFounder(founderId, {
+      futureContributions: (founder.futureContributions || []).map((c) =>
+        c.id === contribId ? { ...c, status } : c
       ),
     });
   }
@@ -268,7 +323,7 @@ export function FounderSetup({
                       }
                     >
                       <FileText className="h-4 w-4 mr-1" />
-                      {expandedFounder === founder.id ? "Collapse" : "Edit Profile"}
+                      {expandedFounder === founder.id ? "Collapse" : "Edit Profile & Contributions"}
                     </Button>
                     <Button
                       variant="ghost"
@@ -343,57 +398,26 @@ export function FounderSetup({
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Current Commitment</Label>
-                        <Select
-                          value={founder.commitmentStatus || "full_time"}
-                          onValueChange={(val) =>
+                        <Label>Hours per Week</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          max={80}
+                          placeholder="e.g. 40"
+                          value={(founder as Record<string, unknown>).hoursPerWeek as number || ""}
+                          onChange={(e) =>
                             updateFounder(founder.id, {
-                              commitmentStatus: val as Founder["commitmentStatus"],
-                            })
+                              hoursPerWeek: Number(e.target.value),
+                            } as Partial<Founder>)
                           }
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="full_time">Full-time (dedicated)</SelectItem>
-                            <SelectItem value="part_time">Part-time</SelectItem>
-                            <SelectItem value="employed_elsewhere">Employed elsewhere</SelectItem>
-                            <SelectItem value="student">Student</SelectItem>
-                            <SelectItem value="transitioning">Transitioning to full-time</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        />
+                        {((founder as Record<string, unknown>).hoursPerWeek as number || 0) < 35 && (founder as Record<string, unknown>).hoursPerWeek !== undefined && (founder as Record<string, unknown>).hoursPerWeek !== "" && (
+                          <p className="text-xs text-destructive">
+                            ⚠ Less than 35 hrs/wk — investors expect full-time (40+)
+                          </p>
+                        )}
                       </div>
                     </div>
-
-                    {/* Full-time date (shown for non-full-time) */}
-                    {founder.commitmentStatus &&
-                      founder.commitmentStatus !== "full_time" && (
-                        <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg space-y-2">
-                          <p className="text-sm font-medium text-destructive">
-                            ⚠ Investment requires full-time commitment from all founders
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {founder.commitmentStatus === "employed_elsewhere"
-                              ? "You must quit your current job before or upon receiving investment."
-                              : founder.commitmentStatus === "student"
-                              ? "You must drop out or take leave before or upon receiving investment."
-                              : "You must transition to full-time with a binding commitment date."}
-                          </p>
-                          <div className="space-y-1">
-                            <Label className="text-xs">Full-time start date</Label>
-                            <Input
-                              type="date"
-                              value={founder.fullTimeDate || ""}
-                              onChange={(e) =>
-                                updateFounder(founder.id, {
-                                  fullTimeDate: e.target.value,
-                                })
-                              }
-                            />
-                          </div>
-                        </div>
-                      )}
 
                     {/* Skills */}
                     <div className="space-y-2">
@@ -564,6 +588,205 @@ export function FounderSetup({
                                 size="sm"
                                 onClick={() =>
                                   removeContribution(founder.id, c.id)
+                                }
+                              >
+                                <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <Separator />
+
+                    {/* Future Contributions */}
+                    <div className="space-y-4">
+                      <div>
+                        <Label className="text-base font-medium">
+                          Future Contributions (Planned)
+                        </Label>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          What will you deliver in the future? Each must have a measurable metric and deadline.
+                        </p>
+                      </div>
+
+                      <div className="space-y-3 p-4 bg-muted/50 rounded-lg">
+                        <div className="space-y-2">
+                          <Label>Category</Label>
+                          <Select
+                            value={futureForm.type}
+                            onValueChange={(v) =>
+                              setFutureForm({
+                                ...futureForm,
+                                type: v as ContributionType,
+                              })
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {CONTRIBUTION_TYPES.map((ct) => (
+                                <SelectItem key={ct.value} value={ct.value}>
+                                  {ct.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>What will you deliver?</Label>
+                          <Input
+                            placeholder="e.g. Build HIPAA-compliant auth system"
+                            value={futureForm.description}
+                            onChange={(e) =>
+                              setFutureForm({
+                                ...futureForm,
+                                description: e.target.value,
+                              })
+                            }
+                          />
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="space-y-2">
+                            <Label>Metric</Label>
+                            <Input
+                              placeholder="e.g. Security audits passed"
+                              value={futureForm.metric}
+                              onChange={(e) =>
+                                setFutureForm({
+                                  ...futureForm,
+                                  metric: e.target.value,
+                                })
+                              }
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Target</Label>
+                            <div className="flex gap-1">
+                              <Input
+                                type="number"
+                                placeholder="3"
+                                value={futureForm.targetValue || ""}
+                                onChange={(e) =>
+                                  setFutureForm({
+                                    ...futureForm,
+                                    targetValue: Number(e.target.value),
+                                  })
+                                }
+                                className="w-20"
+                              />
+                              <Input
+                                placeholder="unit"
+                                value={futureForm.unit}
+                                onChange={(e) =>
+                                  setFutureForm({
+                                    ...futureForm,
+                                    unit: e.target.value,
+                                  })
+                                }
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Deadline</Label>
+                            <Input
+                              type="date"
+                              value={futureForm.deadline}
+                              onChange={(e) =>
+                                setFutureForm({
+                                  ...futureForm,
+                                  deadline: e.target.value,
+                                })
+                              }
+                            />
+                          </div>
+                        </div>
+                        <Button
+                          onClick={() => addFutureContribution(founder.id)}
+                          disabled={!futureForm.description || !futureForm.metric}
+                          size="sm"
+                          className="w-full"
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          Add Future Contribution
+                        </Button>
+                      </div>
+
+                      {(founder.futureContributions || []).length > 0 && (
+                        <div className="space-y-2">
+                          {(founder.futureContributions || []).map((fc) => (
+                            <div
+                              key={fc.id}
+                              className={`flex items-start justify-between p-3 rounded-lg border ${
+                                fc.status === "completed"
+                                  ? "border-green-500/40 bg-green-500/5"
+                                  : fc.status === "missed"
+                                  ? "border-destructive/40 bg-destructive/5"
+                                  : fc.status === "in_progress"
+                                  ? "border-blue-500/40 bg-blue-500/5"
+                                  : "bg-card"
+                              }`}
+                            >
+                              <div className="space-y-1 flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <Badge variant="outline" className="text-xs">
+                                    {CONTRIBUTION_TYPES.find(
+                                      (ct) => ct.value === fc.type
+                                    )?.label || fc.type}
+                                  </Badge>
+                                  <Badge
+                                    className={`text-xs ${
+                                      fc.status === "completed"
+                                        ? "bg-green-500/20 text-green-600"
+                                        : fc.status === "missed"
+                                        ? "bg-destructive/20 text-destructive"
+                                        : fc.status === "in_progress"
+                                        ? "bg-blue-500/20 text-blue-600"
+                                        : "bg-muted text-muted-foreground"
+                                    }`}
+                                  >
+                                    {fc.status || "planned"}
+                                  </Badge>
+                                </div>
+                                <p className="text-sm font-medium">{fc.description}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  Target: {fc.targetValue} {fc.unit} • Metric: {fc.metric}
+                                  {fc.deadline && ` • Due: ${fc.deadline}`}
+                                </p>
+                                <div className="flex gap-1 mt-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 px-2 text-xs"
+                                    onClick={() => updateFutureStatus(founder.id, fc.id, "in_progress")}
+                                  >
+                                    In Progress
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 px-2 text-xs text-green-600"
+                                    onClick={() => updateFutureStatus(founder.id, fc.id, "completed")}
+                                  >
+                                    Done
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 px-2 text-xs text-destructive"
+                                    onClick={() => updateFutureStatus(founder.id, fc.id, "missed")}
+                                  >
+                                    Missed
+                                  </Button>
+                                </div>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() =>
+                                  removeFutureContribution(founder.id, fc.id)
                                 }
                               >
                                 <Trash2 className="h-3.5 w-3.5 text-destructive" />

@@ -1,29 +1,46 @@
-import { put, list } from "@vercel/blob";
-
-const BLOB_FILENAME = "posthuman-founders.json";
-const STORE_ID = "store_Hvu3tBACEtcsYRzU";
+const GIST_ID = "b564869cc4f48561aa9a36a61a160d2f";
+const FILENAME = "posthuman-founders.json";
 
 export async function getFounders() {
   try {
-    const { blobs } = await list({
-      prefix: BLOB_FILENAME,
-      token: process.env.BLOB_READ_WRITE_TOKEN,
+    const token = process.env.GITHUB_TOKEN;
+    const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+      headers: {
+        Accept: "application/vnd.github+json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      cache: "no-store",
     });
-    if (blobs.length > 0) {
-      const res = await fetch(blobs[0].url, { cache: "no-store" });
-      return await res.json();
+    if (res.ok) {
+      const gist = await res.json();
+      const content = gist.files?.[FILENAME]?.content;
+      if (content) {
+        return JSON.parse(content);
+      }
     }
   } catch {
-    // blob doesn't exist yet or store not configured
+    // network error or parse error
   }
   return [];
 }
 
 export async function saveFounders(founders: unknown[]) {
-  await put(BLOB_FILENAME, JSON.stringify(founders), {
-    access: "public",
-    addRandomSuffix: false,
-    allowOverwrite: true,
-    token: process.env.BLOB_READ_WRITE_TOKEN,
+  const token = process.env.GITHUB_TOKEN;
+  if (!token) throw new Error("GITHUB_TOKEN not set");
+
+  await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+    method: "PATCH",
+    headers: {
+      Accept: "application/vnd.github+json",
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      files: {
+        [FILENAME]: {
+          content: JSON.stringify(founders, null, 2),
+        },
+      },
+    }),
   });
 }

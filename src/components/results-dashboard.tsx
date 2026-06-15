@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { AIAnalysis } from "@/components/ai-analysis";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -98,6 +99,8 @@ export function ResultsDashboard({ founders }: ResultsDashboardProps) {
 
   return (
     <div className="space-y-6">
+      <AIAnalysis founders={founders} />
+
       <div>
         <h2 className="text-2xl font-semibold tracking-tight">
           Equity Allocation Results

@@ -23,6 +23,11 @@ export const KPISchema = z.object({
   weight: z.number().min(0).max(100),
   timeframeMonths: z.number().min(1).max(60),
   difficulty: z.enum(["low", "medium", "high", "extreme"]),
+  // Flexible deal structure (optional)
+  dealType: z.enum(["standard", "equity_exchange", "investment", "revenue_share", "flat_fee"]).optional(),
+  theyGet: z.string().optional(),
+  weGet: z.string().optional(),
+  successCriteria: z.string().optional(),
 });
 
 export type KPI = z.infer<typeof KPISchema>;
@@ -53,6 +58,19 @@ export const ContributionSchema = z.object({
 
 export type Contribution = z.infer<typeof ContributionSchema>;
 
+export const FutureContributionSchema = z.object({
+  id: z.string(),
+  description: z.string(),
+  type: ContributionTypeSchema,
+  metric: z.string(),
+  targetValue: z.number().min(0),
+  unit: z.string(),
+  deadline: z.string(),
+  status: z.enum(["planned", "in_progress", "completed", "missed"]).optional(),
+});
+
+export type FutureContribution = z.infer<typeof FutureContributionSchema>;
+
 export const AttachmentSchema = z.object({
   id: z.string(),
   url: z.string(),
@@ -80,13 +98,32 @@ export const FounderSchema = z.object({
   role: z.string(),
   requestedEquity: z.number().min(0).max(100).optional(),
   commitmentStatus: CommitmentStatusSchema.optional(),
+  hoursPerWeek: z.number().min(0).max(80).optional(),
   fullTimeDate: z.string().optional(),
   resume: z.string().optional(),
   yearsExperience: z.number().optional(),
   relevantSkills: z.array(z.string()).optional(),
   contributions: z.array(ContributionSchema).optional(),
+  futureContributions: z.array(FutureContributionSchema).optional(),
   attachments: z.array(AttachmentSchema).optional(),
   kpis: z.array(KPISchema),
+  // Accountability & bonus tracking
+  warnings: z.array(z.object({
+    id: z.string(),
+    date: z.string(),
+    reason: z.string(),
+    kpiId: z.string().optional(),
+  })).optional(),
+  vestingPaused: z.boolean().optional(),
+  vestingPausedDate: z.string().optional(),
+  causeTermination: z.boolean().optional(),
+  bonusEquityEarned: z.number().optional(),
+  bonusMilestones: z.array(z.object({
+    id: z.string(),
+    description: z.string(),
+    equityAmount: z.number(),
+    earnedDate: z.string(),
+  })).optional(),
 });
 
 export type Founder = z.infer<typeof FounderSchema>;
