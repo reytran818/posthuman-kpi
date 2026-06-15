@@ -267,7 +267,16 @@ export function founderEnterpriseValue(founder: Founder): number {
   );
   const contributionScore = founderContributionValue(founder);
   const skillsMult = skillsMultiplier(founder);
-  return (kpiScore * FUTURE_WEIGHT + contributionScore * PRIOR_WEIGHT) * skillsMult;
+
+  // Hours adjustment: part-time founders' KPI scores are discounted
+  // because they have less time to deliver on promises.
+  // Formula: sqrt(hours/40) — gentler than linear to not completely zero out part-timers.
+  // 40h = 1.0×, 20h = 0.71×, 16h = 0.63×, 10h = 0.5×, 5h = 0.35×
+  const hours = founder.hoursPerWeek || 40;
+  const hoursAdjustment = Math.sqrt(Math.min(hours, 40) / 40);
+
+  // Hours adjustment applies to KPI score (promises) but NOT contribution score (past work already done)
+  return (kpiScore * FUTURE_WEIGHT * hoursAdjustment + contributionScore * PRIOR_WEIGHT) * skillsMult;
 }
 
 /**

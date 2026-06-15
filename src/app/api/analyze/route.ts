@@ -137,7 +137,10 @@ Contribution_value = (base_contributions + experience_base) × experience_multip
 Skills_multiplier = 1 + (min(skills_count, 15) × 0.02) — up to 1.3x for 15+ relevant skills
   Relevant skills signal domain expertise and increase KPI delivery probability.
 
-Hours adjustment: Scale equity proportionally by (hours/40) for part-time founders.
+Hours adjustment: KPI scores are discounted by sqrt(hours/40) for part-time founders.
+  40h/wk = 1.0× | 20h/wk = 0.71× | 16h/wk = 0.63× | 10h/wk = 0.5× | 5h/wk = 0.35×
+  This applies to KPI score ONLY (promises). Contribution score (past work) is not affected.
+  Rationale: A part-timer has less time to deliver — their promises should be discounted.
 
 ## EXPERIENCE FAIRNESS RULES:
 - A founder with 15+ years industry experience brings institutional knowledge that de-risks the company — weight this.
