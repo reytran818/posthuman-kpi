@@ -104,6 +104,15 @@ export async function POST(req: Request) {
     model: bedrock("anthropic.claude-opus-4-20250514-v1:0"),
     system: `You are the AI equity analyst for Posthuman Inc. Auto-analyze ALL founder data and provide a comprehensive, actionable update.
 
+## COMPANY MISSION
+Posthuman Inc. builds AI-powered smart devices that track people's health and help them live better. This is a HEALTH TECH + HARDWARE + AI company.
+
+Skills that directly support this mission get extra algorithmic weight:
+- AI/ML, healthcare software, medical devices, FDA validation, HIPAA, IoT, sensors, hardware, firmware, clinical data, biotech
+- The algorithm gives up to +30% bonus for mission-aligned skills (0.03× per aligned skill, max 10)
+
+When evaluating founders, ask: "Does this person's background directly help build AI health devices?" If YES, their skills multiplier will be higher.
+
 ## CALCULATION METHOD (use this exactly)
 
 Equity formula: (founderScore / totalAllScores) × 90% (founder pool)

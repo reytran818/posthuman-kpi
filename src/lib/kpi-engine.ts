@@ -233,12 +233,31 @@ export function founderContributionValue(founder: Founder): number {
 const FUTURE_WEIGHT = 0.7;
 const PRIOR_WEIGHT = 0.3;
 
+// Posthuman Inc. mission: AI smart devices that track health and help people.
+// Skills directly relevant to this mission get extra weight.
+const MISSION_KEYWORDS = [
+  "health", "medical", "clinical", "hipaa", "fda", "device",
+  "iot", "hardware", "sensor", "ai", "ml", "machine learning",
+  "security", "cybersecurity", "pen test", "data pipeline",
+  "cloud", "interoperability", "hl7", "snomed", "loinc",
+  "firmware", "embedded", "wearable", "biotech", "peptide",
+];
+
 function skillsMultiplier(founder: Founder): number {
   const skills = founder.relevantSkills || [];
   const count = skills.length;
   if (count === 0) return 1.0;
-  // Diminishing returns: caps at 1.3x around 15+ skills
-  return 1 + Math.min(count, 15) * 0.02;
+
+  // Count how many skills are mission-aligned
+  const missionAligned = skills.filter((s) =>
+    MISSION_KEYWORDS.some((kw) => s.toLowerCase().includes(kw))
+  ).length;
+
+  // Base: 1 + count * 0.02 (up to 1.3x for 15+ skills)
+  // Mission bonus: extra 0.03 per aligned skill (up to +0.3x for 10 aligned)
+  const baseMult = 1 + Math.min(count, 15) * 0.02;
+  const missionBonus = Math.min(missionAligned, 10) * 0.03;
+  return baseMult + missionBonus;
 }
 
 export function founderEnterpriseValue(founder: Founder): number {

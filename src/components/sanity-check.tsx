@@ -564,21 +564,29 @@ export function SanityCheck({ founders }: SanityCheckProps) {
           <div className="space-y-2">
             <p className="text-sm font-medium flex items-center gap-2">
               <Clock className="h-4 w-4" />
-              Experience Impact on Equity:
+              Experience &amp; Mission Alignment Impact:
+            </p>
+            <p className="text-xs text-muted-foreground mb-2">
+              Posthuman builds AI health devices. Skills in AI/ML, healthcare, medical devices, IoT, security, and FDA compliance get a mission bonus.
             </p>
             <div className="text-xs space-y-1">
               {founders.map((f) => {
                 const yrs = f.yearsExperience || 0;
                 const mult = 1 + Math.min(yrs, 20) / 40;
-                const skillsMult = 1 + Math.min((f.relevantSkills || []).length, 15) * 0.02;
+                const skills = f.relevantSkills || [];
+                const missionKeywords = ["health", "medical", "clinical", "hipaa", "fda", "device", "iot", "hardware", "sensor", "ai", "ml", "machine learning", "security", "cybersecurity", "pen test", "data pipeline", "cloud", "interoperability", "hl7", "snomed", "loinc", "firmware", "embedded", "wearable", "biotech", "peptide"];
+                const missionAligned = skills.filter((s) => missionKeywords.some((kw) => s.toLowerCase().includes(kw))).length;
+                const baseMult = 1 + Math.min(skills.length, 15) * 0.02;
+                const missionBonus = Math.min(missionAligned, 10) * 0.03;
+                const skillsMult = baseMult + missionBonus;
                 return (
-                  <div key={f.id} className="flex items-center gap-2">
+                  <div key={f.id} className="flex items-center gap-2 flex-wrap">
                     <span className="w-28 truncate font-medium">{f.name}</span>
-                    <span className="font-mono text-muted-foreground">{yrs}yr → {mult.toFixed(2)}x</span>
+                    <span className="font-mono text-muted-foreground">{yrs}yr → {mult.toFixed(2)}x exp</span>
                     <span className="text-muted-foreground">|</span>
-                    <span className="font-mono text-muted-foreground">{(f.relevantSkills || []).length} skills → {skillsMult.toFixed(2)}x</span>
+                    <span className="font-mono text-muted-foreground">{skills.length} skills ({missionAligned} mission-aligned) → {skillsMult.toFixed(2)}x</span>
                     <span className="text-muted-foreground">|</span>
-                    <span className="font-mono font-bold">Combined: {(mult * skillsMult).toFixed(2)}x</span>
+                    <span className="font-mono font-bold">Total: {(mult * skillsMult).toFixed(2)}x</span>
                   </div>
                 );
               })}
