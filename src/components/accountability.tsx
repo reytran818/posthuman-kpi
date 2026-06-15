@@ -302,10 +302,10 @@ export function Accountability({ founders, setFounders }: AccountabilityProps) {
             <div className="mt-2 space-y-2">
               <div className="p-2 bg-background rounded border">
                 <p className="font-medium text-sm">Celebrity Brand Distribution</p>
-                <p className="text-muted-foreground">Getting celebrities involved for brand distribution that <span className="font-medium text-foreground">actually converts</span>.</p>
-                <p className="mt-1">• 1 celebrity partnership signed + traceable conversions → 0.5%</p>
-                <p>• 3+ celebrities with measurable ROI (CAC below target) → 1.0%</p>
-                <p className="mt-1 text-muted-foreground italic">Measured by: signed contract + UTM-tracked signups/purchases attributed to that celebrity. &quot;Interest&quot; or DMs do not count.</p>
+                <p className="text-muted-foreground">Getting a major celebrity involved for brand distribution that <span className="font-medium text-foreground">actually converts</span>.</p>
+                <p className="mt-1">• 1 major celebrity partnership signed + traceable conversions → <span className="font-bold">2.5%</span></p>
+                <p>• Celebrity also invests in the company → <span className="font-bold">+2.5% additional</span></p>
+                <p className="mt-1 text-muted-foreground italic">Measured by: signed contract + UTM-tracked signups/purchases attributed to that celebrity. &quot;Interest&quot; or DMs do not count. Investment = wire received in company bank account.</p>
               </div>
               <div className="p-2 bg-background rounded border">
                 <p className="font-medium text-sm">Investor That Moved the Needle</p>
