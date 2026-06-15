@@ -828,11 +828,11 @@ export function ResultsDashboard({ founders }: ResultsDashboardProps) {
                 Future KPIs (70% of equity)
               </p>
               <div className="bg-muted rounded-lg p-3 font-mono text-xs">
-                score = weight × categoryMult × difficultyMult × timeDecay ×
+                score = weight × difficultyMult × timeDecay ×
                 log₁₀(target)
               </div>
               <ul className="space-y-1 list-disc list-inside text-xs">
-                <li>Category: Revenue 1.5× → Culture 0.9×</li>
+                <li>All categories: 1.0× (equal)</li>
                 <li>Difficulty: Low 0.6× → Extreme 2.2×</li>
                 <li>Time Decay: 0.85^(months/12)</li>
               </ul>
@@ -842,18 +842,10 @@ export function ResultsDashboard({ founders }: ResultsDashboardProps) {
                 Prior Contributions (30% of equity)
               </p>
               <div className="bg-muted rounded-lg p-3 font-mono text-xs">
-                score = typeWeight × log₂(hours) × log₁₀(value) × 10
+                score = log₂(hours) × log₁₀(value) × 10
               </div>
               <ul className="space-y-1 list-disc list-inside text-xs">
-                <li>Execution / Building: 1.0× (100%)</li>
-                <li>Technical Build: 0.95×</li>
-                <li>Revenue Generated: 0.9×</li>
-                <li>Capital Invested: 0.85×</li>
-                <li>IP Created: 0.8×</li>
-                <li>Domain Expertise: 0.7×</li>
-                <li>Team Recruited: 0.65×</li>
-                <li>Network: 0.5×</li>
-                <li>Market Research: 0.4×</li>
+                <li>All contribution types: 1.0× (equal)</li>
                 <li>
                   <strong>Idea / Vision: 0.30× (30%)</strong>
                 </li>

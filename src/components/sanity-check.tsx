@@ -133,20 +133,15 @@ export function SanityCheck({ founders }: SanityCheckProps) {
     // 10. Vesting
     checks.push({ label: "Vesting Schedule", severity: "pass", detail: "4-year vesting with 1-year cliff recommended (standard)" });
 
-    // 10b. AI Commoditization — technical-heavy founders
-    for (const f of founders) {
-      const techKPIs = f.kpis.filter((k) => k.category === "technical");
-      const totalKPIs = f.kpis.length;
-      if (totalKPIs > 0 && techKPIs.length / totalKPIs > 0.6) {
-        checks.push({ label: `${f.name} AI-Replaceable Risk`, severity: "warn", detail: `${techKPIs.length}/${totalKPIs} KPIs are "technical" — AI (Claude) can build most software now. Technical category scores at 0.9× vs revenue at 1.6×. Add non-technical KPIs or reframe as architecture/strategy.` });
-      }
-    }
-    const totalTechKPIs = founders.reduce((s, f) => s + f.kpis.filter((k) => k.category === "technical").length, 0);
+    // 10b. KPI Category Diversity
     const totalAllKPIs = founders.reduce((s, f) => s + f.kpis.length, 0);
-    if (totalAllKPIs > 0 && totalTechKPIs / totalAllKPIs > 0.4) {
-      checks.push({ label: "Company Technical Dependency", severity: "warn", detail: `${totalTechKPIs}/${totalAllKPIs} KPIs (${Math.round(totalTechKPIs/totalAllKPIs*100)}%) are technical — in the AI era, this is risky. Software is commoditized. Diversify into revenue, partnerships, and fundraising.` });
-    } else if (totalAllKPIs > 0) {
-      checks.push({ label: "AI Era Balance", severity: "pass", detail: `Technical KPIs are ${Math.round(totalTechKPIs/totalAllKPIs*100)}% of total — good balance. Algorithm weights human-only skills (revenue, fundraising, leadership) higher.` });
+    if (totalAllKPIs > 0) {
+      const categorySet = new Set(founders.flatMap((f) => f.kpis.map((k) => k.category)));
+      if (categorySet.size <= 2 && totalAllKPIs > 5) {
+        checks.push({ label: "KPI Category Diversity", severity: "warn", detail: `Only ${categorySet.size} KPI categories across the team (${[...categorySet].join(", ")}). Consider diversifying to cover more business functions.` });
+      } else {
+        checks.push({ label: "KPI Category Diversity", severity: "pass", detail: `${categorySet.size} different KPI categories represented across the team.` });
+      }
     }
 
     // 11. Revenue/fundraising coverage
@@ -574,29 +569,19 @@ export function SanityCheck({ founders }: SanityCheckProps) {
           <div className="space-y-2">
             <p className="text-sm font-medium flex items-center gap-2">
               <Clock className="h-4 w-4" />
-              Experience &amp; Mission Alignment Impact:
+              Skills Multiplier Impact:
             </p>
             <p className="text-xs text-muted-foreground mb-2">
-              Posthuman builds AI health devices. Skills in AI/ML, healthcare, medical devices, IoT, security, and FDA compliance get a mission bonus.
+              Skills provide a minimal credibility multiplier (max 1.15×). No mission-specific bonus is applied.
             </p>
             <div className="text-xs space-y-1">
               {founders.map((f) => {
-                const yrs = f.yearsExperience || 0;
-                const mult = 1 + Math.min(yrs, 20) / 40;
                 const skills = f.relevantSkills || [];
-                const missionKeywords = ["health", "medical", "clinical", "hipaa", "fda", "device", "iot", "hardware", "sensor", "ai", "ml", "machine learning", "security", "cybersecurity", "pen test", "data pipeline", "cloud", "interoperability", "hl7", "snomed", "loinc", "firmware", "embedded", "wearable", "biotech", "peptide"];
-                const missionAligned = skills.filter((s) => missionKeywords.some((kw) => s.toLowerCase().includes(kw))).length;
-                const baseMult = 1 + Math.min(skills.length, 15) * 0.02;
-                const missionBonus = Math.min(missionAligned, 10) * 0.03;
-                const skillsMult = baseMult + missionBonus;
+                const skillsMult = 1 + Math.min(skills.length, 15) * 0.01;
                 return (
                   <div key={f.id} className="flex items-center gap-2 flex-wrap">
                     <span className="w-28 truncate font-medium">{f.name}</span>
-                    <span className="font-mono text-muted-foreground">{yrs}yr → {mult.toFixed(2)}x exp</span>
-                    <span className="text-muted-foreground">|</span>
-                    <span className="font-mono text-muted-foreground">{skills.length} skills ({missionAligned} mission-aligned) → {skillsMult.toFixed(2)}x</span>
-                    <span className="text-muted-foreground">|</span>
-                    <span className="font-mono font-bold">Total: {(mult * skillsMult).toFixed(2)}x</span>
+                    <span className="font-mono text-muted-foreground">{skills.length} skills → {skillsMult.toFixed(2)}x multiplier</span>
                   </div>
                 );
               })}

@@ -83,12 +83,11 @@ export function Recommendations({ founders }: RecommendationsProps) {
       });
     }
 
-    const techKpis = f.kpis.filter((k) => k.category === "technical").length;
 
     if (skills.length < 5) {
       recs.push({
         priority: "low",
-        text: `Only ${skills.length} skills listed. Adding relevant skills (especially mission-aligned: AI, health, devices) increases multiplier.`,
+        text: `Only ${skills.length} skills listed. Adding relevant skills provides a small credibility multiplier (max 1.15×).`,
       });
     }
 
