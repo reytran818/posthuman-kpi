@@ -86,6 +86,8 @@ export function KPIInput({ founders, setFounders, onComplete }: KPIInputProps) {
   const [showDealFields, setShowDealFields] = useState(false);
   const [editingKPI, setEditingKPI] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Record<string, string | number>>({});
+  const [aiSuggesting, setAiSuggesting] = useState(false);
+  const [aiReasoning, setAiReasoning] = useState("");
   const [kpiForm, setKpiForm] = useState({
     name: "",
     description: "",
@@ -206,6 +208,41 @@ export function KPIInput({ founders, setFounders, onComplete }: KPIInputProps) {
   function cancelEdit() {
     setEditingKPI(null);
     setEditForm({});
+  }
+
+  async function aiSuggestValues() {
+    if (!kpiForm.name) return;
+    setAiSuggesting(true);
+    setAiReasoning("");
+    try {
+      const res = await fetch("/api/suggest-kpi", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: kpiForm.name,
+          description: kpiForm.description,
+          category: kpiForm.category,
+          timeframeMonths: kpiForm.timeframeMonths,
+          difficulty: kpiForm.difficulty,
+          role: activeFounder?.role,
+        }),
+      });
+      if (res.ok) {
+        const suggestion = await res.json();
+        setKpiForm((prev) => ({
+          ...prev,
+          targetValue: suggestion.targetValue,
+          unit: suggestion.unit,
+          weight: suggestion.weight,
+          difficulty: suggestion.difficulty,
+        }));
+        setAiReasoning(suggestion.reasoning);
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setAiSuggesting(false);
+    }
   }
 
   const hasAnyKPIs = founders.some((f) => f.kpis.length > 0);
@@ -403,6 +440,26 @@ export function KPIInput({ founders, setFounders, onComplete }: KPIInputProps) {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* AI Suggest Button */}
+              <div className="flex items-center gap-3">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={!kpiForm.name || aiSuggesting}
+                  onClick={aiSuggestValues}
+                  className="gap-2"
+                >
+                  <Sparkles className={`h-3.5 w-3.5 ${aiSuggesting ? "animate-spin" : ""}`} />
+                  {aiSuggesting ? "AI thinking..." : "AI Suggest Target & Weight"}
+                </Button>
+                {aiReasoning && (
+                  <p className="text-xs text-muted-foreground italic flex-1">
+                    {aiReasoning}
+                  </p>
+                )}
               </div>
 
               {/* Deal Structure Toggle */}
