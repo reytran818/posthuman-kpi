@@ -166,6 +166,7 @@ export function KPIInput({ founders, setFounders, onComplete }: KPIInputProps) {
     setEditForm({
       name: kpi.name,
       description: kpi.description,
+      category: kpi.category,
       targetValue: kpi.targetValue,
       unit: kpi.unit,
       weight: kpi.weight,
@@ -189,6 +190,7 @@ export function KPIInput({ founders, setFounders, onComplete }: KPIInputProps) {
                       ...k,
                       name: editForm.name as string,
                       description: editForm.description as string,
+                      category: (editForm.category as KPICategory) || k.category,
                       targetValue: Number(editForm.targetValue),
                       unit: editForm.unit as string,
                       weight: Number(editForm.weight),
@@ -799,15 +801,119 @@ export function KPIInput({ founders, setFounders, onComplete }: KPIInputProps) {
                   return (
                     <Card key={kpi.id} className="border-blue-500/50">
                       <CardContent className="py-4 space-y-3">
-                        <div className="space-y-2">
-                          <Label className="text-xs font-medium">What will you deliver?</Label>
-                          <Input
-                            value={editForm.description || editForm.name}
-                            onChange={(e) => setEditForm({ ...editForm, description: e.target.value, name: e.target.value.split(".")[0].substring(0, 50) })}
-                            placeholder="Describe what you'll deliver..."
-                          />
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-xs font-medium">Name</Label>
+                            <Input
+                              value={editForm.name as string}
+                              onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs font-medium">Description</Label>
+                            <Input
+                              value={editForm.description as string}
+                              onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                            />
+                          </div>
                         </div>
-                        <div className="flex gap-2">
+
+                        <div className="grid grid-cols-4 gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-xs">Target Value</Label>
+                            <Input
+                              type="number"
+                              value={editForm.targetValue}
+                              onChange={(e) => setEditForm({ ...editForm, targetValue: Number(e.target.value) })}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Unit</Label>
+                            <Input
+                              value={editForm.unit as string}
+                              onChange={(e) => setEditForm({ ...editForm, unit: e.target.value })}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Weight (1-100)</Label>
+                            <Input
+                              type="number"
+                              min={1}
+                              max={100}
+                              value={editForm.weight}
+                              onChange={(e) => setEditForm({ ...editForm, weight: Number(e.target.value) })}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Timeframe (months)</Label>
+                            <Input
+                              type="number"
+                              min={1}
+                              max={60}
+                              value={editForm.timeframeMonths}
+                              onChange={(e) => setEditForm({ ...editForm, timeframeMonths: Number(e.target.value) })}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-xs">Difficulty</Label>
+                            <select
+                              className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                              value={editForm.difficulty as string}
+                              onChange={(e) => setEditForm({ ...editForm, difficulty: e.target.value })}
+                            >
+                              <option value="low">Low</option>
+                              <option value="medium">Medium</option>
+                              <option value="high">High</option>
+                              <option value="extreme">Extreme</option>
+                            </select>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Category</Label>
+                            <select
+                              className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                              value={(editForm.category as string) || kpi.category}
+                              onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                            >
+                              {CATEGORIES.map((c) => (
+                                <option key={c.value} value={c.value}>{c.label}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+
+                        {kpi.dealType && kpi.dealType !== "standard" && (
+                          <div className="space-y-2 p-3 bg-muted/50 rounded border border-dashed">
+                            <Label className="text-xs font-medium">Deal Structure</Label>
+                            <div className="grid grid-cols-3 gap-2">
+                              <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground">They Get</Label>
+                                <Input
+                                  value={editForm.theyGet as string}
+                                  onChange={(e) => setEditForm({ ...editForm, theyGet: e.target.value })}
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground">We Get</Label>
+                                <Input
+                                  value={editForm.weGet as string}
+                                  onChange={(e) => setEditForm({ ...editForm, weGet: e.target.value })}
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground">Success Criteria</Label>
+                                <Input
+                                  value={editForm.successCriteria as string}
+                                  onChange={(e) => setEditForm({ ...editForm, successCriteria: e.target.value })}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex gap-2 pt-1">
                           <Button
                             size="sm"
                             onClick={async () => {
@@ -848,10 +954,11 @@ export function KPIInput({ founders, setFounders, onComplete }: KPIInputProps) {
                                 }
                               } catch { /* silent */ }
                             }}
+                            variant="outline"
                             className="gap-1"
                           >
                             <Sparkles className="h-3.5 w-3.5" />
-                            Regenerate Numbers with AI
+                            Regenerate with AI
                           </Button>
                           <Button
                             size="sm"
@@ -866,26 +973,6 @@ export function KPIInput({ founders, setFounders, onComplete }: KPIInputProps) {
                             Cancel
                           </Button>
                         </div>
-                        {editForm.targetValue && Number(editForm.targetValue) > 0 && editForm.unit && (
-                          <div className="grid grid-cols-4 gap-2 text-xs p-2 bg-muted/50 rounded">
-                            <div className="text-center">
-                              <p className="text-muted-foreground">Target</p>
-                              <p className="font-mono font-bold">{Number(editForm.targetValue).toLocaleString()} {editForm.unit}</p>
-                            </div>
-                            <div className="text-center">
-                              <p className="text-muted-foreground">Weight</p>
-                              <p className="font-mono font-bold">{editForm.weight}/100</p>
-                            </div>
-                            <div className="text-center">
-                              <p className="text-muted-foreground">Difficulty</p>
-                              <p className="font-bold capitalize">{editForm.difficulty}</p>
-                            </div>
-                            <div className="text-center">
-                              <p className="text-muted-foreground">Timeframe</p>
-                              <p className="font-mono font-bold">{editForm.timeframeMonths}mo</p>
-                            </div>
-                          </div>
-                        )}
                       </CardContent>
                     </Card>
                   );
