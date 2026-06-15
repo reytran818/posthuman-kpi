@@ -47,7 +47,10 @@ export async function POST(req: Request) {
       context += `  KPIs (${f.kpis.length}):\n`;
       for (const k of f.kpis) {
         context += `    - ${k.name}: ${k.targetValue} ${k.unit} in ${k.timeframeMonths}mo`;
-        context += ` [category:${k.category}, weight:${k.weight}, difficulty:${k.difficulty}]`;
+        context += ` [category:${k.category}, weight:${k.weight}, difficulty:${k.difficulty}`;
+        if (k.status) context += `, status:${k.status}`;
+        if (k.deadline) context += `, deadline:${k.deadline}`;
+        context += `]`;
         if (k.dealType && k.dealType !== "standard") {
           context += ` {deal:${k.dealType}`;
           if (k.theyGet) context += `, they_get:"${k.theyGet}"`;
@@ -60,13 +63,6 @@ export async function POST(req: Request) {
       }
     } else {
       context += `  ⚠️ NO KPIs DEFINED\n`;
-    }
-
-    if (f.futureContributions?.length > 0) {
-      context += `  Future Contributions (${f.futureContributions.length}):\n`;
-      for (const fc of f.futureContributions) {
-        context += `    - [${fc.type}] ${fc.description}: ${fc.targetValue} ${fc.unit} by ${fc.deadline} [${fc.status || "planned"}]\n`;
-      }
     }
 
     if (f.warnings?.length > 0) {

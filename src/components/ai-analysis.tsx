@@ -75,7 +75,7 @@ export function AIAnalysis({ founders }: AIAnalysisProps) {
       kpis: f.kpis?.length,
       hours: f.hoursPerWeek,
       equity: f.requestedEquity,
-      future: f.futureContributions?.length,
+      kpiStatuses: f.kpis?.map((k: { status?: string }) => k.status).join(","),
       warnings: f.warnings?.length,
     })));
 

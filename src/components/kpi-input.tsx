@@ -212,6 +212,16 @@ export function KPIInput({ founders, setFounders, onComplete }: KPIInputProps) {
     setEditForm({});
   }
 
+  function updateKPIStatus(founderId: string, kpiId: string, status: "planned" | "in_progress" | "completed" | "missed") {
+    setFounders(
+      founders.map((f) =>
+        f.id === founderId
+          ? { ...f, kpis: f.kpis.map((k) => k.id === kpiId ? { ...k, status } : k) }
+          : f
+      )
+    );
+  }
+
   async function aiSuggestValues() {
     if (!kpiForm.name) return;
     setAiSuggesting(true);
@@ -896,11 +906,11 @@ export function KPIInput({ founders, setFounders, onComplete }: KPIInputProps) {
                 }
 
                 return (
-                <Card key={kpi.id} className={issues.length > 0 ? "border-orange-500/50" : ""}>
+                <Card key={kpi.id} className={`${issues.length > 0 ? "border-orange-500/50" : ""} ${kpi.status === "completed" ? "border-green-500/30 bg-green-500/5" : kpi.status === "missed" ? "border-destructive/30 bg-destructive/5" : ""}`}>
                   <CardContent className="py-4">
                     <div className="flex items-start justify-between">
                       <div className="space-y-1">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-medium">{kpi.name}</p>
                           <Badge variant="outline">{kpi.category}</Badge>
                           <Badge
@@ -911,6 +921,19 @@ export function KPIInput({ founders, setFounders, onComplete }: KPIInputProps) {
                             }
                           >
                             {kpi.difficulty}
+                          </Badge>
+                          <Badge
+                            className={`text-xs ${
+                              kpi.status === "completed"
+                                ? "bg-green-500/20 text-green-600 border-green-500/30"
+                                : kpi.status === "missed"
+                                ? "bg-destructive/20 text-destructive"
+                                : kpi.status === "in_progress"
+                                ? "bg-blue-500/20 text-blue-600 border-blue-500/30"
+                                : "bg-muted text-muted-foreground"
+                            }`}
+                          >
+                            {kpi.status || "planned"}
                           </Badge>
                           {issues.length > 0 && (
                             <Badge variant="outline" className="text-orange-500 border-orange-500/50">
@@ -950,7 +973,17 @@ export function KPIInput({ founders, setFounders, onComplete }: KPIInputProps) {
                           </div>
                         )}
                       </div>
-                      <div className="flex gap-1">
+                      <div className="flex gap-1 flex-wrap items-center">
+                        <select
+                          className="h-7 rounded border border-input bg-background px-2 text-xs"
+                          value={kpi.status || "planned"}
+                          onChange={(e) => updateKPIStatus(activeFounder.id, kpi.id, e.target.value as "planned" | "in_progress" | "completed" | "missed")}
+                        >
+                          <option value="planned">Planned</option>
+                          <option value="in_progress">In Progress</option>
+                          <option value="completed">Completed</option>
+                          <option value="missed">Missed</option>
+                        </select>
                         <Button
                           variant="ghost"
                           size="sm"
