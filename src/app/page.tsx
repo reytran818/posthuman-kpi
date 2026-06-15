@@ -41,6 +41,9 @@ export default function Home() {
             <p className="text-sm text-muted-foreground">
               Founders Agreement — KPI & Equity Allocation
             </p>
+            <p className="text-xs font-mono text-muted-foreground/60 mt-0.5">
+              Powered by Claude Opus 4 on Amazon Bedrock
+            </p>
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">

@@ -11,7 +11,7 @@ export async function POST(req: Request) {
   }
 
   const result = streamText({
-    model: bedrock("anthropic.claude-3-5-haiku-20241022-v1:0"),
+    model: bedrock("anthropic.claude-opus-4-20250514-v1:0"),
     prompt: `Convert this founder action item into a structured KPI with hard numbers for an early-stage startup called Posthuman Inc.
 
 Founder role: ${role || "Founder"}

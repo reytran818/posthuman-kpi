@@ -45,7 +45,7 @@ Sales & Revenue Growth`,
   const prompt = prompts[type] || prompts.contribution;
 
   const result = streamText({
-    model: bedrock("anthropic.claude-3-5-haiku-20241022-v1:0"),
+    model: bedrock("anthropic.claude-opus-4-20250514-v1:0"),
     prompt,
   });
 

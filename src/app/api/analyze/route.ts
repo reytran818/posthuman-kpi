@@ -20,7 +20,7 @@ export async function POST(req: Request) {
     ).join("\n");
 
     const result = streamText({
-      model: bedrock("us.anthropic.claude-3-5-haiku-20241022-v1:0"),
+      model: bedrock("anthropic.claude-opus-4-20250514-v1:0"),
       system: `You are a strict KPI quality reviewer for a founders agreement. Your job is to flag ANY vague, unmeasurable, or weak KPIs.
 
 A KPI is VAGUE if:
@@ -146,7 +146,7 @@ Be aggressive. Flag anything that wouldn't hold up in a legal dispute between co
 
   if (analysisType === "recommendations") {
     const result = streamText({
-      model: bedrock("us.anthropic.claude-3-5-haiku-20241022-v1:0"),
+      model: bedrock("anthropic.claude-opus-4-20250514-v1:0"),
       system: `You are an equity advisor for a startup founders agreement. Provide specific, actionable recommendations.
 
 Format your response in these sections:

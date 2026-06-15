@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     for (const kpi of founder.kpis) {
       try {
         const result = streamText({
-          model: bedrock("anthropic.claude-3-5-haiku-20241022-v1:0"),
+          model: bedrock("anthropic.claude-opus-4-20250514-v1:0"),
           prompt: `Regenerate this KPI with proper hard numbers. Keep the same intent. Fix vague language or placeholders.
 
 KPI for ${founder.name} (${founder.role}, ${founder.hoursPerWeek || 40}hrs/week):
