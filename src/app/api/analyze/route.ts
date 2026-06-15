@@ -56,6 +56,61 @@ Be aggressive. Flag anything that wouldn't hold up in a legal dispute between co
     return result.toTextStreamResponse();
   }
 
+  if (analysisType === "investability") {
+    const founderSummary = founders.map((f: Record<string, unknown>) => {
+      const kpis = (f.kpis as Array<Record<string, unknown>>) || [];
+      return `- ${f.name} (${f.role}): ${f.hoursPerWeek || 0}h/wk, ${f.yearsExperience || 0}yr exp, ${kpis.length} KPIs, requesting ${f.requestedEquity || 0}%`;
+    }).join("\n");
+
+    const result = streamText({
+      model: bedrock("anthropic.claude-opus-4-20250514-v1:0"),
+      system: `You are a Y Combinator partner evaluating whether this startup is ready for investment. Be specific, actionable, and honest.
+
+Evaluate the company on these dimensions and tell the team EXACTLY what they need to fix:
+
+1. TEAM — Do they have the right people? Are they full-time? Is there a clear CEO?
+2. PRODUCT — Is there a working product or just plans? What's the MVP status?
+3. TRACTION — Any users, revenue, or pilot customers? What proof exists?
+4. MARKET — Is the market large enough? Is the timing right?
+5. CAP TABLE — Is the equity split clean? Any red flags for future fundraising?
+6. LEGAL — Are the basics in place (vesting, IP assignment, incorporation)?
+7. COMMITMENT — Is everyone all-in or are people hedging?
+
+Format your response as:
+
+## INVESTABILITY SCORE: X/10
+
+## WHAT'S WORKING
+✅ [things that are good]
+
+## BLOCKERS — Fix These Before Approaching Investors
+❌ [critical things that would make an investor say NO]
+
+## WARNINGS — Should Address Soon
+⚠ [things that are concerning but not dealbreakers]
+
+## YOUR NEXT 5 MOVES (in order)
+1. [most important thing to do first]
+2. ...
+3. ...
+4. ...
+5. ...
+
+## BOTTOM LINE
+[1-2 sentences: would you invest in this company today? what's the #1 thing holding them back?]
+
+Be direct. Don't sugarcoat. Founders need to hear the truth to get funded.`,
+      messages: [
+        {
+          role: "user",
+          content: `Evaluate this startup for investment readiness:\n\nCompany: Posthuman Inc. — AI-powered smart health devices\nFounders:\n${founderSummary}\n\nTotal requested equity: ${founders.reduce((s: number, f: Record<string, unknown>) => s + ((f.requestedEquity as number) || 0), 0)}%\nEmployee option pool: 10%\nFull-time founders: ${founders.filter((f: Record<string, unknown>) => ((f.hoursPerWeek as number) || 0) >= 35).length} of ${founders.length}`,
+        },
+      ],
+    });
+
+    return result.toTextStreamResponse();
+  }
+
   const totalRequestedEquity = founders.reduce(
     (sum: number, f: Record<string, unknown>) => sum + ((f.requestedEquity as number) || 0),
     0

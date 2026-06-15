@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -25,6 +26,11 @@ import {
   Clock,
   FileText,
   Download,
+  Sparkles,
+  Loader2,
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
 } from "lucide-react";
 
 interface InvestorSummaryProps {
@@ -32,6 +38,9 @@ interface InvestorSummaryProps {
 }
 
 export function InvestorSummary({ founders }: InvestorSummaryProps) {
+  const [aiChecklist, setAiChecklist] = useState<string | null>(null);
+  const [loadingAI, setLoadingAI] = useState(false);
+
   const equitySplit = calculateEquitySplit(founders);
   const enterpriseValue = projectedEnterpriseValue(founders);
   const investorCheck = investorReadinessCheck(founders);
@@ -46,6 +55,35 @@ export function InvestorSummary({ founders }: InvestorSummaryProps) {
 
   function exportPDF() {
     window.print();
+  }
+
+  async function runInvestabilityCheck() {
+    setLoadingAI(true);
+    try {
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          founders,
+          analysisType: "investability",
+        }),
+      });
+      if (res.ok && res.body) {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let text = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          text += decoder.decode(value, { stream: true });
+        }
+        setAiChecklist(text);
+      }
+    } catch {
+      setAiChecklist("Unable to generate analysis. Try again.");
+    } finally {
+      setLoadingAI(false);
+    }
   }
 
   return (
@@ -234,6 +272,87 @@ export function InvestorSummary({ founders }: InvestorSummaryProps) {
               </div>
             ))}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* What We Need to Be Investable */}
+      <Card className="border-primary/30">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <TrendingUp className="h-4 w-4" />
+              Path to Investment Readiness
+            </CardTitle>
+            <Button
+              onClick={runInvestabilityCheck}
+              disabled={loadingAI}
+              size="sm"
+              className="gap-2"
+            >
+              {loadingAI ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Sparkles className="h-3.5 w-3.5" />
+              )}
+              {loadingAI ? "Analyzing..." : "AI: What do we need?"}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Static readiness checks */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {investorCheck.redFlags.slice(0, 8).map((flag, i) => (
+              <div key={i} className="flex items-start gap-2 text-sm">
+                {flag.category === "critical" ? (
+                  <XCircle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
+                ) : (
+                  <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                )}
+                <div>
+                  <span className="font-medium">{flag.title}</span>
+                  {flag.fix && <p className="text-xs text-muted-foreground mt-0.5">{flag.fix}</p>}
+                </div>
+              </div>
+            ))}
+            {investorCheck.redFlags.length === 0 && (
+              <div className="flex items-center gap-2 text-sm text-emerald-400 col-span-2">
+                <CheckCircle2 className="h-4 w-4" />
+                No critical red flags detected. Strong investor readiness.
+              </div>
+            )}
+          </div>
+
+          {/* AI-generated investability checklist */}
+          {aiChecklist && (
+            <>
+              <Separator />
+              <div className="prose prose-sm prose-invert max-w-none">
+                <div className="text-sm space-y-2 whitespace-pre-wrap leading-relaxed">
+                  {aiChecklist.split("\n").map((line, i) => {
+                    if (line.startsWith("##") || line.startsWith("**")) {
+                      return <p key={i} className="font-semibold text-foreground mt-3 mb-1">{line.replace(/[#*]/g, "").trim()}</p>;
+                    }
+                    if (line.startsWith("✅") || line.startsWith("- ✅")) {
+                      return <p key={i} className="text-emerald-400 ml-2">{line}</p>;
+                    }
+                    if (line.startsWith("❌") || line.startsWith("- ❌")) {
+                      return <p key={i} className="text-red-400 ml-2">{line}</p>;
+                    }
+                    if (line.startsWith("⚠") || line.startsWith("- ⚠")) {
+                      return <p key={i} className="text-amber-400 ml-2">{line}</p>;
+                    }
+                    if (line.match(/^\d+\./)) {
+                      return <p key={i} className="ml-2 text-muted-foreground">{line}</p>;
+                    }
+                    if (line.trim()) {
+                      return <p key={i} className="text-muted-foreground">{line}</p>;
+                    }
+                    return null;
+                  })}
+                </div>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
